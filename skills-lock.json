@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "web-access": {
+      "source": "eze-is/web-access",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "22ea3ae607986d46f3853fd09f6d7b5ff80b5acac09728ad15214559e358ddd3"
+    }
+  }
+}

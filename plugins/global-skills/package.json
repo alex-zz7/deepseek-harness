@@ -1,0 +1,13 @@
+{
+  "name": "dsh-global-skills",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Host-layer skill roots Cursor also sees: ~/.cursor, ~/.claude, ~/.codex, plus nested agent skills.",
+  "type": "module",
+  "main": "lib/index.js",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

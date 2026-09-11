@@ -1,0 +1,20 @@
+# Second filesystem provider on the host skill registry.
+# The web-app bundle disables the *base* host row (`id: skill-filesystem`);
+# this id is different, so it stays mounted in the global layer.
+# `!!js` is evaluated by the loader — same pattern as the cordis preset.
+
+- insert:
+    - id: skill-filesystem-global
+      name: '@deepseek-ai/dsh-skill-filesystem'
+      config:
+        providerName: global-skills
+        includeDefaultRoots: false
+        customSkillDirs:
+          - !!js "process.getBuiltinModule('node:os').homedir() + '/.cursor/skills'"
+          - !!js "process.getBuiltinModule('node:os').homedir() + '/.cursor/skills-cursor'"
+          - !!js "process.getBuiltinModule('node:os').homedir() + '/.claude/skills'"
+          - !!js "process.getBuiltinModule('node:os').homedir() + '/.codex/skills'"
+          - !!js "process.getBuiltinModule('node:os').homedir() + '/.agents/skills/swiftui-pro/skills'"
+          - !!js "process.getBuiltinModule('node:os').homedir() + '/.agents/skills/last30days/skills'"
+          - !!js "process.getBuiltinModule('node:os').homedir() + '/.codex/skills/last30days/skills'"
+          - !!js "process.getBuiltinModule('node:os').homedir() + '/.codex/skills/last30days/variants'"

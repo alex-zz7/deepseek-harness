@@ -1,0 +1,17 @@
+# The sidebar editor's own profile layer.
+#
+# Declared through `dsh.bundle.patch`, which makes this package a profile layer
+# rather than a plain dependency: the installer reports it and the loader picks
+# it up on the next boot. That is the whole install —
+#
+#   dsh plugin --profile web add /path/to/plugins/sidebar-editor
+#
+# — and the user's own `~/.dsh/profiles/<profile>/cordis.patch.yml` is never
+# touched. Removing the dependency removes the editor.
+#
+# Do NOT also pass this row through `dsh web --patch`: a second registration of
+# the same row id is a composition error, not a harmless duplicate.
+
+- insert:
+    - id: sidebar-editor
+      name: 'dsh-sidebar-editor'

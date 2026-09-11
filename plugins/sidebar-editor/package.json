@@ -1,0 +1,23 @@
+{
+  "name": "dsh-sidebar-editor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Editable text tabs for the DSH right Sidebar: an extension-band tab type that takes over file addresses and saves through a host write route, with line numbers, syntax highlighting, find/replace and version-guarded conflict detection.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ],
+      "platform": "web"
+    }
+  }
+}

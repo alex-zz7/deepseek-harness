@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+build/
+*.app
+mac/build/
+
+# 密钥与环境
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.yaml
+
+# Node / Python
+node_modules/
+__pycache__/
+*.pyc
+
+# DSH / 会话产物
+.dsh/
+.dsh-edge-debug/
+*.log
+
+# 本机编辑器
+.obsidian/
+
+# 知识库 skill 正文副本（体积大，且可能含未打码凭据）
+knowledge/skills/vault/
