@@ -1,0 +1,7 @@
+# Admit image attachments for every selected model. Vision Mix only
+# advertises image on its own Mix route; OpenAI-compat catalogs default
+# to text, so the composer send is rejected with MODEL_DOES_NOT_SUPPORT_IMAGES.
+
+- insert:
+    - id: vision-admit
+      name: dsh-vision-admit
