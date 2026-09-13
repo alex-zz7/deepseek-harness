@@ -13,7 +13,7 @@
  * @module @alex/dsh-session-import
  */
 
-import { createImporter, SOURCE_IDS, SOURCES, formatListLine, summarizeListing } from './library.js';
+import { createImporter, SOURCE_IDS, SOURCES, formatListLine, summarizeListing, importSinceMs } from './library.js';
 import { verifyArtifact } from './build.js';
 import { ledgerPath, readLedger, forgetImport } from './ledger.js';
 import { isAbsolute } from 'node:path';
@@ -69,11 +69,13 @@ export function apply(ctx) {
             return;
           }
           try {
+            const sinceMs = importSinceMs({});
             const listing = await importer.list({
               sources: body.value?.sources,
               workspace: body.value?.workspace,
               query: body.value?.query,
               limit: body.value?.limit ?? Number.MAX_SAFE_INTEGER,
+              sinceMs,
             });
             sendJson(res, 200, {
               ok: true,
@@ -81,6 +83,7 @@ export function apply(ctx) {
               paths: { sessionsRoot: importer.paths.sessionsRoot, ledger: importer.paths.ledger },
               summaries: summarizeListing(listing.items),
               total: listing.total,
+              sinceMs,
             });
           } catch (error) {
             sendJson(res, 500, { ok: false, code: 'discover-failed', message: messageOf(error) });
@@ -153,6 +156,7 @@ export function apply(ctx) {
               query: request.query,
               limit: request.limit,
               force: request.force === true,
+              sinceMs: importSinceMs({}),
             });
             const workspaces = await registerWorkspaces(ctx, result.results);
             sendJson(res, 200, { ok: true, ...result, workspaces });
@@ -197,7 +201,7 @@ export function apply(ctx) {
     () =>
       ctx.commands.register({
         name: 'imports',
-        description: 'List external agent sessions (Cursor, Claude Code, Codex) available to import',
+        description: 'List external agent sessions from the last 30 days (Cursor, Claude Code, Codex)',
         input: { hint: '[query]' },
         handler: async (invocation) => {
           const query = invocation.rawInput.trim();
@@ -228,7 +232,7 @@ export function apply(ctx) {
     () =>
       ctx.commands.register({
         name: 'import',
-        description: 'Import Cursor, Claude Code, or Codex sessions and their workspaces into the sidebar',
+        description: 'Import last-30-day Cursor, Claude Code, or Codex sessions into the sidebar',
         input: { hint: '<source> [count] [--force]' },
         handler: async (invocation) => {
           const parsed = parseImportArgs(invocation.rawInput);

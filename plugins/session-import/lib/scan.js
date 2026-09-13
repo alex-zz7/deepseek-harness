@@ -18,12 +18,44 @@ import { plainTextOf, promptTitle, toMillis, usableTitle } from './conversation.
 /** The agents this plugin knows how to read. */
 export const SOURCE_IDS = ['cursor', 'claude', 'codex'];
 
+/**
+ * Import listing window. Discover, `/import`, and the settings picker all
+ * share this: a scan that is not given an explicit `sinceMs` only returns
+ * conversations touched in the last 30 days. Identity lookups (`find`,
+ * repair, prune) pass `sinceMs: 0` so an already-imported older session can
+ * still be opened by id.
+ */
+export const DEFAULT_IMPORT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Resolve the earliest `updatedAt` a listing should keep.
+ *
+ * `sinceMs === 0` or `windowMs === 0` means no window. Any other missing
+ * value falls back to "now minus {@link DEFAULT_IMPORT_WINDOW_MS}".
+ * @param options - optional `sinceMs`, `windowMs`, and `now`.
+ * @returns epoch milliseconds, or `0` for an unbounded scan.
+ */
+export function importSinceMs(options = {}) {
+  if (options.sinceMs === 0 || options.windowMs === 0) return 0;
+  if (Number.isFinite(options.sinceMs) && options.sinceMs > 0) return options.sinceMs;
+  const now = Number.isFinite(options.now) ? options.now : Date.now();
+  const windowMs =
+    Number.isFinite(options.windowMs) && options.windowMs > 0 ? options.windowMs : DEFAULT_IMPORT_WINDOW_MS;
+  return now - windowMs;
+}
+
+/** True when `time` is inside the listing window (or the window is off). */
+export function isWithinImportWindow(time, sinceMs) {
+  if (!Number.isFinite(sinceMs) || sinceMs <= 0) return true;
+  return Number(time) >= sinceMs;
+}
+
 /** Display metadata for the picker and the CLI listing. */
 export const SOURCES = {
   cursor: {
     id: 'cursor',
     label: 'Cursor',
-    hint: 'Cursor IDE chat tabs (globalStorage state.vscdb)',
+    hint: 'Cursor sidebar chats (composerHeaders, not archived)',
   },
   claude: {
     id: 'claude',
@@ -65,8 +97,13 @@ export function homeDir() {
 
 /**
  * Enumerate every session group a source keeps, in newest-first order.
+ *
+ * Unless `sinceMs` is `0`, only conversations whose `updatedAt` falls inside
+ * {@link importSinceMs} are returned. That is the import window — listing and
+ * `/import` share it so an older Claude or Codex rollout cannot slip through
+ * a UI that only hid the count.
  * @param source - one of {@link SOURCE_IDS}.
- * @param options - optional root override for tests.
+ * @param options - optional root override, `sinceMs`, `windowMs`, and `now`.
  * @returns discovered session references.
  */
 export function scanSource(source, options = {}) {
@@ -195,9 +232,12 @@ export function readHeadRecords(path, limit = 256) {
  */
 export function scanClaude(options = {}) {
   const root = options.claudeRoot ?? join(homeDir(), '.claude', 'projects');
+  const sinceMs = importSinceMs(options);
   const files = walkFiles(root, (name) => name.endsWith('.jsonl'));
   const refs = [];
   for (const path of files) {
+    const updatedAt = mtimeMs(path);
+    if (!isWithinImportWindow(updatedAt, sinceMs)) continue;
     const facts = claudeHeadFacts(path);
     if (facts.empty) continue;
     refs.push(
@@ -205,8 +245,8 @@ export function scanClaude(options = {}) {
         locator: { path },
         title: facts.title,
         cwd: facts.cwd,
-        updatedAt: mtimeMs(path),
-        createdAt: facts.createdAt || mtimeMs(path),
+        updatedAt,
+        createdAt: facts.createdAt || updatedAt,
         meta: { projectDir: path.slice(root.length + 1).split('/')[0], gitBranch: facts.gitBranch },
       }),
     );
@@ -224,12 +264,15 @@ export function scanClaude(options = {}) {
  */
 export function scanCodex(options = {}) {
   const root = options.codexRoot ?? join(homeDir(), '.codex');
+  const sinceMs = importSinceMs(options);
   const files = [
     ...walkFiles(join(root, 'sessions'), (name) => name.startsWith('rollout-') && name.endsWith('.jsonl')),
     ...walkFiles(join(root, 'archived_sessions'), (name) => name.startsWith('rollout-') && name.endsWith('.jsonl')),
   ];
   const refs = [];
   for (const path of files) {
+    const updatedAt = mtimeMs(path);
+    if (!isWithinImportWindow(updatedAt, sinceMs)) continue;
     const name = path.split('/').pop();
     const facts = codexHeadFacts(path);
     if (facts.empty) continue;
@@ -242,8 +285,8 @@ export function scanCodex(options = {}) {
         locator: { path },
         title: facts.title,
         cwd: facts.cwd,
-        updatedAt: mtimeMs(path),
-        createdAt: facts.createdAt || mtimeMs(path),
+        updatedAt,
+        createdAt: facts.createdAt || updatedAt,
         meta: { archived: path.includes('/archived_sessions/'), originator: facts.originator },
       }),
     );
@@ -253,9 +296,10 @@ export function scanCodex(options = {}) {
 }
 
 /**
- * Cursor's IDE chats live in SQLite `composerHeaders` plus per-workspace
- * `agent-transcripts` JSONL. The scan reads the headers and the transcript
- * index, and leaves the millions of `bubbleId:` rows to the parser.
+ * Cursor's sidebar is the non-archived, non-draft `composerHeaders` rows.
+ * Agent-transcript JSONL is only used as a fallback when a sidebar chat has
+ * no SQLite bubbles. Disk history that never appears in the sidebar is
+ * ignored, so an import matches what Cursor itself lists.
  *
  * The database is opened read-only and never written. Cursor may be running:
  * SQLite readers do not block the IDE's writes, and rows written while the scan
@@ -267,20 +311,24 @@ export function scanCursor(options = {}) {
   const path =
     options.cursorDb ??
     join(homeDir(), 'Library', 'Application Support', 'Cursor', 'User', 'globalStorage', 'state.vscdb');
+  const sinceMs = importSinceMs(options);
   const byId = new Map();
   if (existsSync(path)) {
     const db = openCursorDb(path);
     try {
       const rows = db.prepare('SELECT composerId, createdAt, lastUpdatedAt, isArchived, isSubagent, value FROM composerHeaders').all();
       for (const row of rows) {
-        if (row.isSubagent === 1) continue;
+        if (row.isSubagent === 1 || row.isArchived === 1) continue;
+        const updatedAt = Number(row.lastUpdatedAt) || Number(row.createdAt) || 0;
+        if (!isWithinImportWindow(updatedAt, sinceMs)) continue;
         let header = {};
         try {
           header = JSON.parse(row.value);
         } catch {
           header = {};
         }
-        if (header.isDraft === true) continue;
+        if (header.isDraft === true || header.isBestOfNSubcomposer === true) continue;
+        if (header.isArchived === true) continue;
         const cwd = header?.workspaceIdentifier?.uri?.fsPath || header?.workspaceIdentifier?.uri?.path;
         const named = usableTitle(typeof header.name === 'string' ? header.name : '', cwd);
         const hasBubbles = composerHasBubbles(db, row.composerId);
@@ -291,7 +339,7 @@ export function scanCursor(options = {}) {
             title: named,
             cwd: typeof cwd === 'string' && cwd.startsWith('/') ? cwd.replace(/\/+$/, '') : undefined,
             createdAt: Number(row.createdAt) || 0,
-            updatedAt: Number(row.lastUpdatedAt) || Number(row.createdAt) || 0,
+            updatedAt,
             locator: { path, composerId: row.composerId },
             meta: {
               subtitle: typeof header.subtitle === 'string' ? header.subtitle : '',
@@ -306,10 +354,8 @@ export function scanCursor(options = {}) {
       db.close();
     }
   }
-  mergeCursorTranscripts(byId, options);
-  const refs = [...byId.values()].filter(
-    (ref) => ref.meta.hasBubbles === true || typeof ref.locator.transcript === 'string' || ref.meta.fromTranscript === true,
-  );
+  attachCursorTranscripts(byId, options);
+  const refs = [...byId.values()].filter((ref) => ref.title.length > 0 || ref.meta.hasBubbles === true);
   refs.sort((left, right) => right.updatedAt - left.updatedAt);
   return refs;
 }
@@ -406,15 +452,15 @@ function isTinyFile(path) {
 }
 
 /**
- * Fold agent-transcript JSONL files under ~/.cursor/projects into the Cursor index.
+ * Attach a transcript file to a sidebar chat when SQLite has no bubbles.
  *
- * Composer headers only cover chats still in the SQLite store. Older and
- * some current agent chats live only as JSONL transcripts; skipping that
- * tree is why an import showed 58 conversations while Cursor listed hundreds.
+ * Transcripts that do not belong to a current sidebar header stay out of
+ * the index — those are Cursor's on-disk leftovers, not what the IDE lists.
  * @param byId - composer id → session ref, mutated in place.
  * @param options - optional cursorProjects root override.
  */
-function mergeCursorTranscripts(byId, options = {}) {
+function attachCursorTranscripts(byId, options = {}) {
+  if (byId.size === 0) return;
   const root = options.cursorProjects ?? join(homeDir(), '.cursor', 'projects');
   const files = walkFiles(root, (name) => name.endsWith('.jsonl'));
   for (const file of files) {
@@ -422,34 +468,10 @@ function mergeCursorTranscripts(byId, options = {}) {
     const id = file.slice(0, -'.jsonl'.length).split('/').pop();
     if (!id || id.startsWith('task-')) continue;
     const existing = byId.get(id);
-    if (existing !== undefined) {
-      existing.locator.transcript = file;
-      if (existing.title.length === 0) existing.title = firstTranscriptTitle(file, existing.cwd);
-      continue;
-    }
-    const slug = cursorProjectSlug(file, root);
-    const cwd = cwdFromCursorProjectSlug(slug);
-    const title = firstTranscriptTitle(file, cwd);
-    const updatedAt = mtimeMs(file);
-    if (title.length === 0 && !transcriptHasUser(file)) continue;
-    byId.set(
-      id,
-      sessionRef('cursor', id, {
-        title,
-        cwd,
-        createdAt: updatedAt,
-        updatedAt,
-        locator: { composerId: id, transcript: file },
-        meta: { fromTranscript: true },
-      }),
-    );
+    if (existing === undefined) continue;
+    existing.locator.transcript = file;
+    if (existing.title.length === 0) existing.title = firstTranscriptTitle(file, existing.cwd);
   }
-}
-
-/** Project folder slug that owns one transcript path. */
-function cursorProjectSlug(file, root) {
-  const relative = file.startsWith(`${root}/`) ? file.slice(root.length + 1) : file;
-  return relative.split('/')[0] ?? '';
 }
 
 /**
@@ -499,22 +521,6 @@ function firstTranscriptTitle(path, cwd) {
     { byteLimit: 262144, recordLimit: 40 },
   );
   return title;
-}
-
-/** True when a transcript contains at least one user message. */
-function transcriptHasUser(path) {
-  let found = false;
-  scanJsonlHead(
-    path,
-    (record) => {
-      if (record.role === 'user' && plainTextOf(record.message?.content).trim().length > 0) {
-        found = true;
-        return false;
-      }
-    },
-    { byteLimit: 262144, recordLimit: 80 },
-  );
-  return found;
 }
 
 /** True when Cursor stored at least one bubble for this composer. */

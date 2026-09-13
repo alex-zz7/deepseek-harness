@@ -37,17 +37,19 @@ dependency removes the importer.
 
 - **Settings → General → Import sessions.** Choose Cursor, Claude Code, or
   Codex, then import that source's conversations into the sidebar under their
-  original workspace. Already imported items are skipped.
-- **`/imports [query]`** in the composer lists what is available.
+  original workspace. The scanner only lists conversations **updated in the
+  last 30 days**. Already imported items are skipped.
+- **`/imports [query]`** in the composer lists what is available in that window.
 - **`/import <source> [count] [--all] [--force]`** imports. `source` is
-  `cursor`, `claude`, `codex`, or `all`; `count` defaults to 5.
+  `cursor`, `claude`, `codex`, or `all`; `count` defaults to 5. `--all` still
+  stays inside the 30-day window.
 
 ### From a terminal
 
 ```sh
-node plugins/session-import/scripts/import-sessions.mjs list [source] [--limit N] [--query text]
+node plugins/session-import/scripts/import-sessions.mjs list [source] [--limit N] [--query text] [--all-time]
 node plugins/session-import/scripts/import-sessions.mjs preview <source> <id>
-node plugins/session-import/scripts/import-sessions.mjs import [sources…] [--limit N] [--all] [--dry-run]
+node plugins/session-import/scripts/import-sessions.mjs import [sources…] [--limit N] [--all] [--dry-run] [--all-time]
 node plugins/session-import/scripts/import-sessions.mjs repair [sources…] [--limit N] [--all]
 node plugins/session-import/scripts/import-sessions.mjs check
 ```
@@ -125,9 +127,15 @@ content* rather than written as a blank session.
 
 | Source | Location | Notes |
 |---|---|---|
-| Cursor | `state.vscdb` plus `~/.cursor/projects/*/agent-transcripts` | `composerHeaders` for chats still in SQLite; agent-transcript JSONL for the rest (older workspaces and many current agent tabs). Bubbles are read read-only through `node:sqlite`. |
+| Cursor | `state.vscdb` (`composerHeaders`) | Only the chats Cursor's sidebar still lists: not archived, not drafts, not subagents. Agent-transcript JSONL is a fallback when a listed chat has no SQLite bubbles. |
 | Claude Code | `~/.claude/projects/<project>/*.jsonl` | The project directory name is lossy, so the workspace comes from each record's own `cwd`. |
-| Codex | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` plus `archived_sessions/` | `session_meta` gives the workspace and identity, `response_item` the messages. |
+| Codex | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` plus `archived_sessions/` | `session_meta` gives the workspace and identity, `response_item` the messages. The settings count is **pending** (not yet imported), not how many rollouts exist on disk. |
+
+Listing and import share a 30-day `updatedAt` window in `scan.js`. Older
+sessions stay on disk and stay in the ledger; `find`, `repair`, and `prune`
+pass `sinceMs: 0` so they can still see them. A source showing `0` usually
+means every recent conversation is already in `ledger.json`, not that the
+scanner missed the store.
 
 ## Re-importing
 

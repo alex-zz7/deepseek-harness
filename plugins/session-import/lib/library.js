@@ -8,16 +8,17 @@
  * @module @alex/dsh-session-import/library
  */
 
-import { basename } from 'node:path';
+import { rm } from 'node:fs/promises';
+import { basename, dirname } from 'node:path';
 import { planImport, writePlan, verifyArtifact, planDigest, withTitleEvent } from './build.js';
 import { readClaude } from './sources/claude.js';
 import { readCodex } from './sources/codex.js';
 import { readCursor } from './sources/cursor.js';
-import { SOURCE_IDS, SOURCES, scanSource } from './scan.js';
-import { ledgerKey, ledgerPath, readLedger, recordImport } from './ledger.js';
+import { SOURCE_IDS, SOURCES, importSinceMs, scanSource } from './scan.js';
+import { ledgerKey, ledgerPath, readLedger, recordImport, writeLedger } from './ledger.js';
 import { harnessHome, resolveHarness, sessionsRoot as defaultSessionsRoot } from './harness.js';
 
-export { SOURCE_IDS, SOURCES } from './scan.js';
+export { SOURCE_IDS, SOURCES, DEFAULT_IMPORT_WINDOW_MS, importSinceMs } from './scan.js';
 export { ledgerPath, readLedger, ledgerKey } from './ledger.js';
 export { harnessHome, sessionsRoot, resolveHarness, candidateRoots } from './harness.js';
 
@@ -93,8 +94,12 @@ export function createImporter(options = {}) {
     paths: roots,
 
     /**
-     * List every external session on this machine.
-     * @param request - optional `sources`, `limit`, and `query` filter.
+     * List external sessions on this machine that fall inside the import window.
+     *
+     * The default window is the last 30 days (`updatedAt`). Pass `sinceMs: 0`
+     * to list every session the scanners can see — repair and prune do that
+     * so an older ledger row is not treated as vanished.
+     * @param request - optional `sources`, `limit`, `query`, `sinceMs`, `windowMs`, `now`.
      * @returns entries with `imported` marked from the ledger.
      */
     async list(request = {}) {
@@ -104,11 +109,12 @@ export function createImporter(options = {}) {
       const workspace = typeof request.workspace === 'string' && request.workspace.length > 0
         ? request.workspace.replace(/\/+$/, '') || '/'
         : null;
+      const sinceMs = importSinceMs(request);
       const items = [];
       for (const source of sources) {
         let refs;
         try {
-          refs = scanSource(source, scanOptions);
+          refs = scanSource(source, { ...scanOptions, sinceMs, now: request.now });
         } catch {
           refs = [];
         }
@@ -313,6 +319,40 @@ export function createImporter(options = {}) {
     },
 
     /**
+     * Drop imported sessions that are no longer in the source's live index.
+     *
+     * Cursor's disk keeps archived tabs and agent-transcript leftovers that
+     * the IDE sidebar does not show. Those can be imported once and then
+     * pruned so DeepSeek only keeps the chats Cursor still lists.
+     * @param request - optional `sources` (defaults to `cursor`).
+     * @returns removed ledger keys and how many current chats were kept.
+     */
+    async prune(request = {}) {
+      const wantedSources = normalizeSources(request.sources ?? ['cursor']);
+      const listing = await importer.list({ sources: wantedSources, limit: Number.MAX_SAFE_INTEGER, sinceMs: 0 });
+      const keep = new Set(listing.items.map((item) => ledgerKey(item.source, item.id)));
+      const ledger = await readLedger(roots.ledger);
+      const removed = [];
+      for (const [key, entry] of Object.entries(ledger.entries)) {
+        const source = key.slice(0, key.indexOf(':'));
+        if (!wantedSources.includes(source)) continue;
+        if (keep.has(key)) continue;
+        if (typeof entry?.artifact === 'string' && entry.artifact.length > 0) {
+          await rm(dirname(entry.artifact), { recursive: true, force: true });
+        }
+        delete ledger.entries[key];
+        removed.push({
+          key,
+          sessionId: entry?.sessionId ?? '',
+          title: entry?.title ?? '',
+          cwd: entry?.cwd ?? null,
+        });
+      }
+      await writeLedger(ledger, roots.ledger);
+      return { removed, kept: keep.size, considered: keep.size + removed.length };
+    },
+
+    /**
      * Import many sessions, newest first.
      * @param request - `sources`, `limit`, `query`, `force`, `ids`, and `onProgress`.
      * @returns per-session results plus totals.
@@ -388,7 +428,7 @@ export function createImporter(options = {}) {
      */
     async find(source, id) {
       if (typeof source !== 'string' || typeof id !== 'string') return null;
-      const refs = scanSource(source, scanOptions);
+      const refs = scanSource(source, { ...scanOptions, sinceMs: 0 });
       return refs.find((ref) => ref.id === id) ?? null;
     },
 

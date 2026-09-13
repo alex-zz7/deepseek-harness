@@ -83,13 +83,16 @@ function usage() {
     [
       'Import external agent sessions into DeepSeek Harness.',
       '',
-      '  dsh-import-sessions list [source…] [--limit N] [--query text]',
+      '  dsh-import-sessions list [source…] [--limit N] [--query text] [--all-time]',
       '  dsh-import-sessions preview <source> <id>',
-      '  dsh-import-sessions import [source…] [--limit N] [--all] [--force] [--dry-run] [--query text]',
+      '  dsh-import-sessions import [source…] [--limit N] [--all] [--force] [--dry-run] [--query text] [--all-time]',
       '  dsh-import-sessions repair [source…] [--limit N] [--all]',
+      '  dsh-import-sessions prune [source…]',
       '  dsh-import-sessions check',
       '',
       `Sources: ${SOURCE_IDS.join(', ')} (default: all)`,
+      'List and import only include conversations updated in the last 30 days,',
+      'unless --all-time is passed. Repair and prune always see the full index.',
       '',
       'Options:',
       '  --home <dir>   harness home to import INTO (default: $DSH_HOME or ~/.dsh).',
@@ -129,6 +132,7 @@ async function main(argv) {
       sources,
       limit: numberFlag(flags, 'limit') ?? 30,
       query: flags.query === undefined || flags.query === true ? '' : String(flags.query),
+      sinceMs: flags['all-time'] === true ? 0 : undefined,
     });
     if (flags.json === true) {
       process.stdout.write(`${JSON.stringify(listing, null, 2)}\n`);
@@ -183,6 +187,7 @@ async function main(argv) {
       limit: flags.all === true ? Number.MAX_SAFE_INTEGER : (numberFlag(flags, 'limit') ?? 5),
       query: flags.query === undefined || flags.query === true ? '' : String(flags.query),
       force: flags.force === true,
+      sinceMs: flags['all-time'] === true ? 0 : undefined,
       dryRun,
       onProgress: (entry, index, total) => {
         if (total > 20 && index % 5 === 0) process.stderr.write(`\r${index}/${total}`);
@@ -224,6 +229,17 @@ async function main(argv) {
       `\nEach repaired session kept its id, so the sidebar row is the same one — rebuilt.\n`,
     );
     if (result.failed > 0) return 1;
+    return 0;
+  }
+
+  if (command === 'prune') {
+    const sources = positional.length > 0 ? sourcesFrom(positional, flags) : ['cursor'];
+    const result = await importer.prune({ sources });
+    process.stdout.write(`Kept ${result.kept}, removed ${result.removed.length} of ${result.considered}.\n\n`);
+    for (const row of result.removed) {
+      const title = String(row.title || row.key).replace(/\s+/g, ' ');
+      process.stdout.write(`× ${row.key}  ${title.slice(0, 72)}\n`);
+    }
     return 0;
   }
 
