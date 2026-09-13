@@ -149,3 +149,42 @@ dsh --profile web \
 
 Then open the printed URL, open a session, open the right sidebar's 文件 tab,
 and click any text file.
+
+---
+
+# web_fetch + TUN/fake-IP (2026-09-13)
+
+**Verdict: the official provider is correct to reject `198.18.0.0/15`. The
+product bug is that users never get a proxy policy, so that check always
+fires.** Do not weaken `isPublicIpAddress`. Do not patch `node_modules`.
+
+## The three facts
+
+| # | Fact | Evidence |
+|---|---|---|
+| 1 | TUN clients replace system DNS with a fake-IP resolver | `scutil --dns` → `198.18.0.2` on `utun4`; `dns.lookup('raw.githubusercontent.com')` → `198.18.8.93`. `dig @223.5.5.5` still returns `185.199.108-111.133` |
+| 2 | `dsh-web-fetch-http` `resolvePublicAddresses` rejects any non-`unicast` `ipaddr.js` range before the request | `198.18.8.93` is `reserved` → `WEB_BLOCKED_URL`. `127/8`, `10/8`, `192.168/16`, `169.254/16` stay in that path |
+| 3 | The same provider already has a proxied path that does not resolve or pin | `proxyRouteFor(url).proxied === true` → `requestVia(dispatcher)`. With `HTTPS_PROXY=http://127.0.0.1:1082`, the four previously-dead URLs all returned 200 |
+
+## What we ship instead of an upstream patch
+
+`plugins/web-fetch-proxy` wraps `ctx.web.fetch` (no second provider, so no
+`WEB_PROVIDER_AMBIGUOUS`). Two layers:
+
+1. If the official throw is `WEB_BLOCKED_URL` and a fresh lookup is only
+   `198.18.0.0/15` (or IPv4-mapped forms), rethrow `WEB_PROXY_FAKE_IP` with
+   the `~/.dsh/.env` / fake-IP-off instructions. Literal IPs and other
+   reserved ranges stay `WEB_BLOCKED_URL`.
+2. If no proxy env is set and `DSH_PROXY_AUTODETECT` is not `0`, probe
+   `scutil --proxy` then loopback ports (`7890`…`8888`) in ≤300ms and call
+   `installProxyFromEnvironment`. Failures are silent. `LOOPBACK_NO_PROXY` is
+   untouched.
+
+Upstream-sized patch if DeepSeek wants it: in `resolvePublicAddresses`, when
+every answer is in `198.18.0.0/15` *and* `proxyRouteFor` is already proxied,
+skip the public-IP check; when it is not proxied, throw `WEB_PROXY_FAKE_IP`
+instead of `WEB_BLOCKED_URL`. We cannot do that here without editing
+`node_modules`.
+
+Repro: `node plugins/web-fetch-proxy/test/probe-fetch.mjs`.
+Docs: `docs/web-fetch-fakeip-fix.md`.

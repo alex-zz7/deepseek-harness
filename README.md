@@ -32,6 +32,7 @@ optional WKWebView wrapper around the same server.
 | 全局技能根 | `plugins/global-skills` |
 | Mac / Windows 一键启动 | `npm start` / `start.cmd` / `start.sh` |
 | 可选 Mac `.app` + 语音输入 | `mac/` |
+| TUN/fake-IP 下的 `web_fetch` | `plugins/web-fetch-proxy` |
 
 ## Quick start (Mac & Windows)
 
@@ -215,6 +216,7 @@ plugins/
   sidebar-editor/                  # editable right-sidebar tabs
   workspace-fork/ conversation-fork/ model-select-fork/ agent-preset-fork/
   global-skills/
+  web-fetch-proxy/                 # fake-IP DNS + local HTTP proxy
 knowledge/                         # notes + optional local RAG helper
 build/                             # generated, not source
 ```
@@ -227,6 +229,12 @@ Runtime state that outlives a process:
                                             # the PID the app spawned, reaped on
                                             # the next launch if it is stale
 ```
+
+## Troubleshooting
+
+`web_fetch` says the hostname resolves to a non-public IP, but `curl` and the
+browser work: the machine is on a TUN / fake-IP proxy. See
+[docs/web-fetch-fakeip-fix.md](docs/web-fetch-fakeip-fix.md).
 
 ## The sidebar editor plugin
 
