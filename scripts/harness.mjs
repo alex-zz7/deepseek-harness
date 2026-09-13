@@ -14,6 +14,7 @@ import net from 'node:net';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { applyDetectedEnv, detectLocalProxy, logDetected } from '../plugins/web-fetch-proxy/lib/detect.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const WIN = process.platform === 'win32';
@@ -142,6 +143,11 @@ async function start({ open = true, forceNew = false } = {}) {
   }
 
   console.log('starting dsh web…');
+  const found = await detectLocalProxy();
+  if (found) {
+    applyDetectedEnv(found);
+    logDetected(found);
+  }
   const child = spawnDsh(['web', '--no-open', '--port', '0']);
   let opened = false;
   const consider = (chunk) => {
