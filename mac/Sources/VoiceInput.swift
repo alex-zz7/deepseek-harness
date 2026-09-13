@@ -213,24 +213,29 @@ final class VoiceInput: NSObject {
         guard wantsListening, id == segmentID else { return }
 
         if let result {
-            partial = result.bestTranscription.formattedString
-            guard result.isFinal else {
+            let next = result.bestTranscription.formattedString
+            if result.isFinal {
+                committed = joined(committed, next)
+                partial = ""
+                fastFailures = 0
                 publish()
+                // The task already finished — do not cancel it, or the error
+                // callback would look like a new empty utterance.
+                task = nil
+                setRequest(nil)
+                scheduleSegment()
                 return
             }
-            // Endpointing closed the segment. Keep the words and listen on.
-            committed = joined(committed, partial)
-            partial = ""
-            fastFailures = 0
+            // After a pause the same task often starts a *new* sentence and
+            // drops the earlier words without sending `isFinal`. Fold the
+            // previous partial into `committed` so the page is not overwritten.
+            if Self.looksLikeNewUtterance(previous: partial, next: next) {
+                committed = joined(committed, partial)
+            }
+            partial = next
             publish()
-            // The task already finished — do not cancel it, or the error
-            // callback would look like a new empty utterance.
-            task = nil
-            setRequest(nil)
-            scheduleSegment()
             return
         }
-
         guard error != nil else { return }
         committed = joined(committed, partial)
         partial = ""
@@ -288,6 +293,18 @@ final class VoiceInput: NSObject {
     private func publish() {
         guard !transcript.isEmpty else { return }
         onText?(transcript, false)
+    }
+
+    /// True when `next` is a fresh sentence, not a revision of `previous`.
+    private static func looksLikeNewUtterance(previous: String, next: String) -> Bool {
+        let prev = previous.trimmingCharacters(in: .whitespacesAndNewlines)
+        let incoming = next.trimmingCharacters(in: .whitespacesAndNewlines)
+        if prev.isEmpty || incoming.isEmpty { return false }
+        let prevFold = prev.lowercased()
+        let nextFold = incoming.lowercased()
+        if nextFold.hasPrefix(prevFold) || prevFold.hasPrefix(nextFold) { return false }
+        if nextFold.contains(prevFold) { return false }
+        return true
     }
 
     private func joined(_ head: String, _ tail: String) -> String {

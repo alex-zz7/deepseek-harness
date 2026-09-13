@@ -183,6 +183,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
             scope: 'root';
             owner: HeroAgentPresetOwnerProps;
         };
+        /** Full-width entries above the workspace/mode row and composer card. */
+        'conversation.input.preamble': {
+            kind: 'list';
+            scope: 'session-maybe';
+        };
         /** Full-width entries above the composer card. */
         'conversation.input.dock': {
             kind: 'list';
@@ -392,7 +397,7 @@ export interface HeroBrandMarkOwnerProps {
     className?: string | undefined;
 }
 /** Full props of the resident optional-Session Conversation shell. */
-export type ConversationSlotProps = PropsRuntime<'main.conversation'> & PropsRenderSlots<'conversation.session' | 'conversation.session.header' | 'conversation.composer' | 'conversation.composer.bar' | 'conversation.input.dock' | 'conversation.hero.brand.mark' | 'conversation.hero.workspace' | 'conversation.hero.agentPreset'> & InjectFace<ConversationInjected> & PropsLocale<'conversation'>;
+export type ConversationSlotProps = PropsRuntime<'main.conversation'> & PropsRenderSlots<'conversation.session' | 'conversation.session.header' | 'conversation.composer' | 'conversation.composer.bar' | 'conversation.input.preamble' | 'conversation.input.dock' | 'conversation.hero.brand.mark' | 'conversation.hero.workspace' | 'conversation.hero.agentPreset'> & InjectFace<ConversationInjected> & PropsLocale<'conversation'>;
 /** Shared target-neutral Conversation store handle. */
 export type ConversationStore = ReturnType<typeof createConversationStore>;
 /** Full props of the strict Session body. */

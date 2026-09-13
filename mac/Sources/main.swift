@@ -9,7 +9,9 @@
 //   3. Parse the one startup line — `dsh web: http://127.0.0.1:PORT/?token=...` —
 //      which carries the auth token the browser-trust fence requires.
 //   4. Load that URL in a WKWebView inside a real NSWindow.
-//   5. Terminate the child on quit **only when we spawned it**.
+//   5. Leave the server running on quit so the next launch — and any
+//      browser tab already on that URL — keeps working.
+//   6. Install a login LaunchAgent that pre-warms `dsh web` after reboot.
 //
 // Why attaching matters
 // ---------------------
@@ -29,8 +31,26 @@
 // Usage: DeepSeekHarness [--make-icon <out.png> [logo.svg]]
 
 import AppKit
+import Darwin
 import Network
 import WebKit
+
+/// Prime Desktop / Documents / Downloads in one sitting.
+///
+/// macOS will not merge those into a single dialog. Touching each folder
+/// here, with the matching usage strings in Info.plist, is what makes the
+/// grant persist so later launches (and vaults on the Desktop) stay quiet.
+enum FolderAccess {
+    static func requestKnownFolders() {
+        DispatchQueue.global(qos: .utility).async {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            for name in ["Desktop", "Documents", "Downloads"] {
+                let url = home.appendingPathComponent(name, isDirectory: true)
+                _ = try? url.checkResourceIsReachable()
+            }
+        }
+    }
+}
 
 // MARK: - Icon generation (reuses this binary; keeps the build dependency-free)
 
@@ -109,12 +129,25 @@ func makeIcon(at path: String, logoPath: String?) {
 // MARK: - Locating the dsh executable
 
 enum Locator {
+    private static let cacheKey = "dsh-bin"
+
+    private static func remember(_ path: String) -> URL {
+        UserDefaults.standard.set(path, forKey: cacheKey)
+        let dest = ServerRecord.directory.appendingPathComponent("dsh-path")
+        try? path.write(to: dest, atomically: true, encoding: .utf8)
+        return URL(fileURLWithPath: path)
+    }
+
     static func dsh() -> URL? {
         let fm = FileManager.default
         let env = ProcessInfo.processInfo.environment
 
         if let explicit = env["DSH_BIN"], fm.isExecutableFile(atPath: explicit) {
-            return URL(fileURLWithPath: explicit)
+            return remember(explicit)
+        }
+        if let cached = UserDefaults.standard.string(forKey: cacheKey),
+           fm.isExecutableFile(atPath: cached) {
+            return remember(cached)
         }
 
         // Newest npx cache entry wins — that is where `npx @deepseek-ai/dsh` lands.
@@ -132,7 +165,9 @@ enum Locator {
             }
             for dir in newestFirst {
                 let candidate = dir.appendingPathComponent("node_modules/.bin/dsh")
-                if fm.isExecutableFile(atPath: candidate.path) { return candidate }
+                if fm.isExecutableFile(atPath: candidate.path) {
+                    return remember(candidate.path)
+                }
             }
         }
 
@@ -142,7 +177,7 @@ enum Locator {
             NSHomeDirectory() + "/.local/bin/dsh",
         ]
         for path in common where fm.isExecutableFile(atPath: path) {
-            return URL(fileURLWithPath: path)
+            return remember(path)
         }
 
         // Last resort: ask a login shell, which sees the user's real PATH.
@@ -164,7 +199,7 @@ enum Locator {
                 .trimmingCharacters(in: .whitespacesAndNewlines),
             !raw.isEmpty, fm.isExecutableFile(atPath: raw)
         else { return nil }
-        return URL(fileURLWithPath: raw)
+        return remember(raw)
     }
 }
 
@@ -177,27 +212,37 @@ enum Shell {
     /// child the PATH a login shell would see.
     static let fallbackPATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
+    private static let cacheKey = "dsh-login-path"
     private static var cached: String?
 
-    static func loginPATH() -> String {
+    /// PATH for spawning `dsh`. Never blocks on a login shell — that can take
+    /// seconds when ~/.zshrc is heavy, and it sat on the launch path.
+    static func launchPATH() -> String {
         if let cached { return cached }
-        var resolved = fallbackPATH
+        if let stored = UserDefaults.standard.string(forKey: cacheKey), !stored.isEmpty {
+            cached = stored
+            refreshInBackground()
+            return stored
+        }
+        refreshInBackground()
+        return fallbackPATH
+    }
 
-        let probe = Process()
-        probe.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        probe.arguments = ["-lc", "printf %s \"$PATH\""]
-        let out = Pipe()
-        probe.standardOutput = out
-        probe.standardError = Pipe()
-        if (try? probe.run()) != nil {
+    private static func refreshInBackground() {
+        DispatchQueue.global(qos: .utility).async {
+            let probe = Process()
+            probe.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            probe.arguments = ["-lc", "printf %s \"$PATH\""]
+            let out = Pipe()
+            probe.standardOutput = out
+            probe.standardError = Pipe()
+            guard (try? probe.run()) != nil else { return }
             let data = out.fileHandleForReading.readDataToEndOfFile()
             probe.waitUntilExit()
-            if let text = String(data: data, encoding: .utf8), !text.isEmpty {
-                resolved = text
-            }
+            guard let text = String(data: data, encoding: .utf8), !text.isEmpty else { return }
+            cached = text
+            UserDefaults.standard.set(text, forKey: cacheKey)
         }
-        cached = resolved
-        return resolved
     }
 }
 
@@ -268,22 +313,47 @@ enum WebURL {
             case .ready:
                 reachable = true
                 done.signal()
-            case .failed, .cancelled, .waiting:
-                // Refused or not listening: fail fast rather than wait out the
-                // connection timeout.
+            case .failed, .cancelled:
                 done.signal()
             default:
+                // `.waiting` is the first state even for a live localhost
+                // port. Treating it as a miss made every launch spawn a new
+                // `dsh web` and kill the leftover.
                 break
             }
         }
         connection.start(queue: queue)
 
-        if done.wait(timeout: .now() + 1.5) == .timedOut {
+        if done.wait(timeout: .now() + 0.6) == .timedOut {
             connection.cancel()
             return false
         }
         connection.cancel()
         return reachable
+    }
+}
+
+/// Serializes "start a server" so the app and the login keeper never spawn two.
+/// `mkdir` is the lock: macOS has no `flock` command, and this matches keep-dsh.sh.
+enum WebLock {
+    static var dir: URL {
+        URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".dsh/web.lockdir")
+    }
+
+    static func acquire(timeout: TimeInterval = 60) -> Bool {
+        try? FileManager.default.createDirectory(
+            at: dir.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let path = dir.path
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if mkdir(path, 0o755) == 0 { return true }
+            usleep(100_000)
+        }
+        return false
+    }
+
+    static func release() {
+        rmdir(dir.path)
     }
 }
 
@@ -385,6 +455,115 @@ enum ServerRecord {
     }
 }
 
+/// Starts `dsh web` at login so the first click after reboot can attach.
+enum KeepAliveAgent {
+    static let label = "local.deepseek-harness.dsh"
+
+    static var script: URL { ServerRecord.directory.appendingPathComponent("keep-dsh.sh") }
+
+    static var plist: URL {
+        URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent("Library/LaunchAgents/\(label).plist")
+    }
+
+    static var compileCache: URL {
+        ServerRecord.directory.appendingPathComponent("node-compile-cache", isDirectory: true)
+    }
+
+    static func install() {
+        let fm = FileManager.default
+        try? fm.createDirectory(at: ServerRecord.directory, withIntermediateDirectories: true)
+        try? fm.createDirectory(at: compileCache, withIntermediateDirectories: true)
+
+        let bundled = Bundle.main.url(forResource: "keep-dsh", withExtension: "sh")
+            ?? Bundle.main.resourceURL?.appendingPathComponent("keep-dsh.sh")
+        if let bundled, fm.fileExists(atPath: bundled.path) {
+            try? fm.removeItem(at: script)
+            try? fm.copyItem(at: bundled, to: script)
+            try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
+        }
+        guard fm.isExecutableFile(atPath: script.path) else { return }
+
+        let home = NSHomeDirectory()
+        let uid = getuid()
+        let body = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>Label</key>
+                <string>\(label)</string>
+                <key>ProgramArguments</key>
+                <array>
+                    <string>\(xmlEscape(script.path))</string>
+                </array>
+                <key>RunAtLoad</key>
+                <true/>
+                <key>KeepAlive</key>
+                <true/>
+                <key>WorkingDirectory</key>
+                <string>\(xmlEscape(home))</string>
+                <key>EnvironmentVariables</key>
+                <dict>
+                    <key>HOME</key>
+                    <string>\(xmlEscape(home))</string>
+                    <key>PATH</key>
+                    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+                    <key>NODE_COMPILE_CACHE</key>
+                    <string>\(xmlEscape(compileCache.path))</string>
+                </dict>
+                <key>StandardOutPath</key>
+                <string>\(xmlEscape(ServerRecord.directory.appendingPathComponent("keep-dsh.out.log").path))</string>
+                <key>StandardErrorPath</key>
+                <string>\(xmlEscape(ServerRecord.directory.appendingPathComponent("keep-dsh.err.log").path))</string>
+            </dict>
+            </plist>
+            """
+        try? FileManager.default.createDirectory(
+            at: plist.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? body.write(to: plist, atomically: true, encoding: .utf8)
+
+        let target = "gui/\(uid)/\(label)"
+        if launchctl(["print", target]) == 0 {
+            if !isScriptRunning() {
+                _ = launchctl(["bootout", target])
+                _ = launchctl(["bootstrap", "gui/\(uid)", plist.path])
+            }
+            return
+        }
+        _ = launchctl(["bootstrap", "gui/\(uid)", plist.path])
+    }
+
+    private static func isScriptRunning() -> Bool {
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+        proc.arguments = ["-f", "keep-dsh.sh"]
+        proc.standardOutput = FileHandle.nullDevice
+        proc.standardError = FileHandle.nullDevice
+        guard (try? proc.run()) != nil else { return false }
+        proc.waitUntilExit()
+        return proc.terminationStatus == 0
+    }
+
+    private static func xmlEscape(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+    }
+
+    private static func launchctl(_ arguments: [String]) -> Int32 {
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        proc.arguments = arguments
+        proc.standardOutput = FileHandle.nullDevice
+        proc.standardError = FileHandle.nullDevice
+        guard (try? proc.run()) != nil else { return 1 }
+        proc.waitUntilExit()
+        return proc.terminationStatus
+    }
+}
+
 // MARK: - Server lifecycle
 
 final class ServerController {
@@ -416,6 +595,13 @@ final class ServerController {
     /// The URL of a live server found in the shared record. Used to retract
     /// that record when we stop owning the server that published it.
     private var sharedURL: URL?
+    private var holdingLock = false
+
+    private func releaseSpawnLock() {
+        guard holdingLock else { return }
+        WebLock.release()
+        holdingLock = false
+    }
 
     /// The token-bearing URL the fence accepts.
     private static let urlRegex = try! NSRegularExpression(
@@ -432,8 +618,19 @@ final class ServerController {
         queue.async { [weak self] in
             guard let self else { return }
 
-            let existing = WebURL.read()
-            if let url = existing, WebURL.probe(url) {
+            if let url = WebURL.read(), WebURL.probe(url) {
+                DispatchQueue.main.async {
+                    guard !self.stopping else { return }
+                    self.sharedURL = url
+                    self.spawnedByUs = false
+                    self.state = .ready(url, owned: false)
+                }
+                return
+            }
+
+            let locked = WebLock.acquire()
+            if let url = WebURL.read(), WebURL.probe(url) {
+                if locked { WebLock.release() }
                 DispatchQueue.main.async {
                     guard !self.stopping else { return }
                     self.sharedURL = url
@@ -445,18 +642,23 @@ final class ServerController {
 
             // A published URL that does not answer is a dead token; retract it
             // so the next client does not wait on it.
-            if let existing { WebURL.retract(existing) }
+            if let stale = WebURL.read() { WebURL.retract(stale) }
 
             // Nothing live to attach to, so the published token is dead.
             let dsh = Locator.dsh()
             DispatchQueue.main.async {
-                guard !self.stopping else { return }
+                guard !self.stopping else {
+                    if locked { WebLock.release() }
+                    return
+                }
                 guard let dsh else {
+                    if locked { WebLock.release() }
                     self.state = .failed(
                         "找不到 dsh 可执行文件。\n\n请先安装：npx @deepseek-ai/dsh\n"
                         + "或设置环境变量 DSH_BIN 指向 dsh。")
                     return
                 }
+                self.holdingLock = locked
                 self.spawn(dsh)
             }
         }
@@ -480,9 +682,12 @@ final class ServerController {
         let dshDir = dsh.deletingLastPathComponent().path
         environment["PATH"] = [
             dshDir,
-            Shell.loginPATH(),
+            Shell.launchPATH(),
             Shell.fallbackPATH,
         ].joined(separator: ":")
+        try? FileManager.default.createDirectory(
+            at: KeepAliveAgent.compileCache, withIntermediateDirectories: true)
+        environment["NODE_COMPILE_CACHE"] = KeepAliveAgent.compileCache.path
         proc.environment = environment
 
         let out = Pipe()
@@ -506,6 +711,7 @@ final class ServerController {
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.clearHandlers()
+                self.releaseSpawnLock()
                 ServerRecord.clear()
                 if self.stopping { return }
                 switch self.state {
@@ -524,6 +730,7 @@ final class ServerController {
         do {
             try proc.run()
         } catch {
+            releaseSpawnLock()
             state = .failed("无法启动 dsh：\(error.localizedDescription)")
             return
         }
@@ -536,6 +743,7 @@ final class ServerController {
         // If the startup banner never arrives, stop waiting and say why.
         let timeout = DispatchWorkItem { [weak self] in
             guard let self, !self.stopping, case .starting = self.state else { return }
+            self.releaseSpawnLock()
             self.state = .failed("等待 DSH 服务启动超时（60 秒）。\n\n" + self.tail())
         }
         timeoutWork = timeout
@@ -574,6 +782,7 @@ final class ServerController {
         // instead of starting a second one that would contend for session locks.
         WebURL.publish(url)
         sharedURL = url
+        releaseSpawnLock()
         state = .ready(url, owned: true)
     }
 
@@ -606,6 +815,18 @@ final class ServerController {
         start()
     }
 
+    /// Leave the process running so the next launch attaches in milliseconds
+    /// instead of waiting for a cold `dsh web` boot.
+    func handoff() {
+        stopping = true
+        timeoutWork?.cancel()
+        timeoutWork = nil
+        clearHandlers()
+        releaseSpawnLock()
+        process = nil
+        spawnedByUs = false
+    }
+
     /// Stops the server, but only if this app is what started it. An attached
     /// server belongs to whoever launched it; quitting must leave it running.
     func stop() {
@@ -613,9 +834,9 @@ final class ServerController {
         timeoutWork?.cancel()
         timeoutWork = nil
         clearHandlers()
+        releaseSpawnLock()
 
         guard spawnedByUs else {
-            if let url = sharedURL { WebURL.retract(url) }
             sharedURL = nil
             process = nil
             return
@@ -663,6 +884,10 @@ final class ScriptMessageRelay: NSObject, WKScriptMessageHandler {
             appDelegate?.openProjects()
         case "dshPickWorkspace":
             appDelegate?.pickWorkspace(message.body as? String ?? "")
+        case "dshPickMaterials":
+            appDelegate?.pickMaterials()
+        case "dshRevealInFinder":
+            appDelegate?.revealInFinder(message.body as? String ?? "")
         default:
             break
         }
@@ -679,7 +904,7 @@ final class WebHostView: NSView {
 
     override init(frame frameRect: NSRect) {
         let config = WKWebViewConfiguration()
-        config.websiteDataStore = .default()
+        config.websiteDataStore = WKWebsiteDataStore.nonPersistent()
         // Sidebar row affordances live only here. The browser loads the same
         // server and the same client bundle but never this script, which is
         // exactly what keeps the web surface unchanged.
@@ -688,15 +913,18 @@ final class WebHostView: NSView {
                 source: sidebarActionsScript,
                 injectionTime: .atDocumentEnd,
                 forMainFrameOnly: true))
+        // Handlers must be registered before the web view is created.
+        // Adding them afterwards can leave the content process on a blank page.
+        for name in [
+            "dshOpenInBrowser", "dshVoiceToggle", "dshVoiceFinish", "dshVoiceCancel",
+            "dshOpenProjects", "dshPickWorkspace", "dshPickMaterials",
+            "dshRevealInFinder",
+        ] {
+            config.userContentController.add(relay, name: name)
+        }
         webView = WKWebView(frame: .zero, configuration: config)
         super.init(frame: frameRect)
         relay.appDelegate = NSApp.delegate as? AppDelegate
-        webView.configuration.userContentController.add(relay, name: "dshOpenInBrowser")
-        webView.configuration.userContentController.add(relay, name: "dshVoiceToggle")
-        webView.configuration.userContentController.add(relay, name: "dshVoiceFinish")
-        webView.configuration.userContentController.add(relay, name: "dshVoiceCancel")
-        webView.configuration.userContentController.add(relay, name: "dshOpenProjects")
-        webView.configuration.userContentController.add(relay, name: "dshPickWorkspace")
         build()
     }
 
@@ -704,7 +932,6 @@ final class WebHostView: NSView {
 
     private func build() {
         webView.translatesAutoresizingMaskIntoConstraints = false
-        webView.isHidden = true
         addSubview(webView)
 
         spinner.translatesAutoresizingMaskIntoConstraints = false
@@ -758,7 +985,6 @@ final class WebHostView: NSView {
     /// Shows the boot overlay. The message distinguishes attaching to a server
     /// that is already running from starting a new one.
     func showLoading(_ message: String = "正在启动 DeepSeek Harness…") {
-        webView.isHidden = true
         statusLabel.isHidden = false
         detailLabel.isHidden = true
         spinner.isHidden = false
@@ -770,7 +996,6 @@ final class WebHostView: NSView {
     func showFailure(_ message: String, retry: Selector, target: AnyObject) {
         spinner.stopAnimation(nil)
         spinner.isHidden = true
-        webView.isHidden = true
         statusLabel.isHidden = false
         statusLabel.stringValue = "无法启动"
         detailLabel.stringValue = message
@@ -786,7 +1011,6 @@ final class WebHostView: NSView {
         statusLabel.isHidden = true
         detailLabel.isHidden = true
         retryButton.isHidden = true
-        webView.isHidden = false
     }
 }
 
@@ -813,8 +1037,8 @@ final class HarnessWindowController: NSWindowController, WKNavigationDelegate, W
         // entirely off-screen, which yields a running app with an invisible
         // window and no way back. Fall back to centring when nothing on screen
         // overlaps it.
-        let onScreen = NSScreen.screens.contains { $0.visibleFrame.intersects(window.frame) }
-        if !onScreen { window.center() }
+        let primary = NSScreen.main?.visibleFrame ?? .zero
+        if !primary.intersects(window.frame) { window.center() }
 
         host = WebHostView(frame: frame)
         window.contentView = host
@@ -885,6 +1109,13 @@ final class HarnessWindowController: NSWindowController, WKNavigationDelegate, W
         evaluate("window.__dshVoiceLevel && window.__dshVoiceLevel(\(String(format: "%.3f", clamped)))")
     }
 
+    /// Hand picked material files/folders to the knowledge-studio page.
+    func deliverMaterials(_ paths: [String]) {
+        let data = (try? JSONEncoder().encode(paths)) ?? Data("[]".utf8)
+        let json = String(data: data, encoding: .utf8) ?? "[]"
+        evaluate("window.__dshPickedMaterials && window.__dshPickedMaterials(\(json))")
+    }
+
     /// Hand a native-picked directory to the page so it can register and open it.
     func adoptWorkspace(_ path: String?) {
         if let path {
@@ -906,48 +1137,28 @@ final class HarnessWindowController: NSWindowController, WKNavigationDelegate, W
     }
 
     func reload() {
-        if host.webView.url != nil {
+        if let url = WebURL.read() {
+            load(url)
+        } else if host.webView.url != nil {
             host.webView.reload()
         } else {
             (NSApp.delegate as? AppDelegate)?.bootServer()
         }
     }
 
-    // Keep localhost traffic inside the app; send everything else to the browser.
     func webView(
         _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
-        guard let url = navigationAction.request.url else {
-            decisionHandler(.allow)
-            return
-        }
-        let hostName = url.host ?? ""
-        let isLocal = hostName == "127.0.0.1" || hostName == "localhost" || hostName == "::1"
-        if isLocal || url.scheme == "about" || url.scheme == "blob" || url.scheme == "data" {
-            decisionHandler(.allow)
-            return
-        }
-        NSWorkspace.shared.open(url)
-        decisionHandler(.cancel)
+        decisionHandler(.allow)
     }
 
-    func webView(
-        _ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
-        for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures
-    ) -> WKWebView? {
-        if let url = navigationAction.request.url {
-            let hostName = url.host ?? ""
-            if hostName == "127.0.0.1" || hostName == "localhost" {
-                webView.load(navigationAction.request)
-            } else {
-                NSWorkspace.shared.open(url)
-            }
-        }
-        return nil
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        host.showWeb()
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        if (error as NSError).code == NSURLErrorCancelled { return }
         presentFailure("页面加载失败：\(error.localizedDescription)")
     }
 
@@ -955,6 +1166,7 @@ final class HarnessWindowController: NSWindowController, WKNavigationDelegate, W
         _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
         withError error: Error
     ) {
+        if (error as NSError).code == NSURLErrorCancelled { return }
         presentFailure("无法连接 DSH 服务：\(error.localizedDescription)")
     }
 }
@@ -969,10 +1181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // One copy of the shell per user. A second copy attaches to the same
-        // server and fights the first over session ownership — and because the
-        // copy that spawned the server tears it down when it quits, a stray
-        // second launch can take down the first one's window with it, which
-        // reads exactly like a crash.
+        // server and fights the first over session ownership.
         if focusRunningCopy() { return }
 
         trapSignals()
@@ -981,7 +1190,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.apply(state)
         }
         newWindow()
+        DispatchQueue.global(qos: .utility).async { KeepAliveAgent.install() }
         bootServer()
+        FolderAccess.requestKnownFolders()
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -1006,7 +1217,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             signal(sig, SIG_IGN)
             let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
             source.setEventHandler { [weak self] in
-                self?.server.stop()
+                self?.server.handoff()
                 exit(0)
             }
             source.resume()
@@ -1017,8 +1228,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationWillTerminate(_ notification: Notification) {
-        // Kills only the PID we spawned.
-        server.stop()
+        server.handoff()
     }
 
     // MARK: lifecycle
@@ -1103,6 +1313,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///
     /// `scratch` makes an empty git repo immediately (no dialog). `new-folder`
     /// uses a save panel so the user picks the name and location, then `git init`.
+    /// Open a vault or source path in Finder. The page cannot launch Finder
+    /// itself; file:// URLs are ignored inside the web view.
+    func revealInFinder(_ raw: String) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("/"), !trimmed.contains("\0") else { return }
+        let url = URL(fileURLWithPath: trimmed).standardizedFileURL
+        guard url.isFileURL, url.path.hasPrefix("/") else { return }
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else {
+            NSSound.beep()
+            return
+        }
+        if isDir.boolValue {
+            NSWorkspace.shared.open(url)
+        } else {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        }
+    }
+
+    /// Files and folders, multiple selection. Used by knowledge-studio.
+    func pickMaterials() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.canCreateDirectories = false
+        panel.prompt = "添加"
+        panel.message = "可选文件或文件夹，可多选。不会改你的资料。"
+        let finish: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+            let paths = response == .OK ? panel.urls.map(\.path) : []
+            self?.frontWindow?.deliverMaterials(paths)
+        }
+        if let window = frontWindow?.window {
+            panel.beginSheetModal(for: window, completionHandler: finish)
+        } else {
+            finish(panel.runModal())
+        }
+    }
+
     func pickWorkspace(_ mode: String) {
         switch mode {
         case "scratch":

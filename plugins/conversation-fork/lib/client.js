@@ -2761,6 +2761,21 @@ window.__ModuleLoader__.load({
 		* through one property read; assignment through the tracker proxy and `#`
 		* private fields bypass that rebinding.
 		*/
+		async function prepareKnowledgePrompt(text, session) {
+			if (window.__KS_PAGE__ !== true || !text || text.includes("<knowledge_context")) return text;
+			const fn = window.__ksPreparePrompt;
+			if (typeof fn !== "function") return text;
+			try {
+				const snap = typeof session?.getSnapshot === "function" ? session.getSnapshot() : null;
+				const next = await fn(text, {
+					cwd: snap?.cwd || session?.cwd || window.__KS_SESSION_CWD__ || "",
+					sessionId: session?.sessionId || window.__KS_SESSION_ID__ || ""
+				});
+				return typeof next === "string" && next ? next : text;
+			} catch {
+				return text;
+			}
+		}
 		/** Create one browser-only image draft descriptor; only its id enters input state. */
 		function browserDraftAttachment(file) {
 			return {
@@ -2878,7 +2893,7 @@ window.__ModuleLoader__.load({
 			async send(text) {
 				const result = await this.scopedSession("send").prompt([{
 					type: "text",
-					text
+					text: await prepareKnowledgePrompt(text)
 				}], "queue");
 				if (!result.ok) throw new Error(`conversation.send failed: ${result.error.code}: ${result.error.message}`);
 			}
@@ -2925,9 +2940,10 @@ window.__ModuleLoader__.load({
 					receiptId: uploadFor(attachment).receiptId
 				}));
 				if (session.getSnapshot().subagent !== null) {
-					const content = [...await serializeAttachments(), ...text === "" ? [] : [{
+					const promptText = await prepareKnowledgePrompt(text, session);
+					const content = [...await serializeAttachments(), ...promptText === "" ? [] : [{
 						type: "text",
-						text
+						text: promptText
 					}]];
 					return (await session.prompt(content, mode, signal)).ok ? { kind: "success" } : { kind: "error" };
 				}
@@ -2947,9 +2963,10 @@ window.__ModuleLoader__.load({
 				let content;
 				try {
 					await nextPaint();
-					content = [...await serializeAttachments(), ...text === "" ? [] : [{
+					const promptText = await prepareKnowledgePrompt(text, session);
+					content = [...await serializeAttachments(), ...promptText === "" ? [] : [{
 						type: "text",
-						text
+						text: promptText
 					}]];
 				} catch (error) {
 					submission.abandon();
@@ -14932,6 +14949,7 @@ window.__ModuleLoader__.load({
 						t,
 						renderSlot
 					}),
+					renderSlot("conversation.input.preamble", {}),
 					keepWorkspaceRow && heroWorkspaceRow,
 					zone !== void 0 && renderSlot("conversation.input.dock", zone),
 					inputBar
@@ -16633,6 +16651,10 @@ window.__ModuleLoader__.load({
 					},
 					"conversation.composer.bar": {
 						kind: "single",
+						scope: "session-maybe"
+					},
+					"conversation.input.preamble": {
+						kind: "list",
 						scope: "session-maybe"
 					},
 					"conversation.input.dock": {

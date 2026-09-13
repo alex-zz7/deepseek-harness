@@ -28,3 +28,15 @@ __pycache__/
 
 # 知识库 skill 正文副本（体积大，且可能含未打码凭据）
 knowledge/skills/vault/
+
+# 本机新建的知识库（索引和导入副本；资料仍在原路径）
+knowledge-vaults/
+knowledge/index/
+knowledge/index
+
+# knowledge/.kb 只提交源码，不提交模型和索引
+knowledge/.kb/node_modules/
+knowledge/.kb/index/
+knowledge/.kb/.model-cache/
+knowledge/.kb/.npm-cache/
+knowledge/.kb/.npm-logs/

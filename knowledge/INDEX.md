@@ -4,8 +4,12 @@ DeepSeek Harness 工作区（`~/Desktop/deepseekharness`）的知识层入口。
 
 **先读本文件，再按下面的路由表深入。不要全库扫描。**
 
+> 提问时系统会先检索本库，再把命中段落放进 `<knowledge_context>`。有这段资料就直接回答，不要再调工具。
+> 细节见 [`.kb/README.md`](.kb/README.md)。知道该看哪个文件时，下面的路由表仍然更快。
+
 | 入口 | 内容 | 规模 |
 |---|---|---|
+| [`.kb/`](.kb/README.md) | **本地检索层**：向量+BM25 混合检索，MCP 工具 | 24754 分块 / 1024 维 |
 | [`github/INDEX.md`](github/INDEX.md) | 我的 GitHub 仓库总表 | 32 个仓库（原创 17 / Fork 15） |
 | [`github/projects/`](github/projects/) | 每个仓库一页元数据 | 32 个详情页 |
 | [`skills/INDEX.md`](skills/INDEX.md) | 本机 skill 知识库分类索引 | 252 个 skill / 12 组 |

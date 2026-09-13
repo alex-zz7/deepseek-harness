@@ -1,13 +1,38 @@
-# DeepSeek Harness — native macOS shell
+# DeepSeek Harness
 
-A Cursor-style agent UI for DeepSeek on macOS, as a real `.app` instead of a
-browser tab. It wraps the DSH browser UI (`dsh web`) in a native `WKWebView`
-window and manages the server for you.
+Local DeepSeek agent UI. The same `dsh web` surface on **macOS and Windows**.
 
-No Electron. No Rust. No Xcode project — it builds with `swiftc` from the
-Command Line Tools alone.
+Windows does not get a second native shell. Both platforms start one `dsh web`
+server and open the browser — that is the whole product. The Mac `.app` is an
+optional WKWebView wrapper around the same server.
 
-## Build & run
+## Quick start (Mac & Windows)
+
+Need **Node.js 20+**. `dsh` is pulled through `npx` if it is not already on PATH.
+
+```bash
+git clone https://github.com/alex-zz7/deepseek-harness.git
+cd deepseek-harness
+npm start
+```
+
+Windows can also double-click `start.cmd`. macOS / Linux can run `./start.sh`.
+
+`npm start` will:
+
+1. `dsh plugin --profile web add` every package under `plugins/`
+2. Reuse a live server from `~/.dsh/web-url`, or start `dsh web --no-open --port 0`
+3. Open the token URL in your default browser
+
+```bash
+npm run setup              # plugins only
+node scripts/harness.mjs start --new      # force a fresh server
+node scripts/harness.mjs start --no-open  # print the URL only
+```
+
+## Optional: native macOS app
+
+No Electron. No Rust. No Xcode project — `swiftc` from the Command Line Tools.
 
 ```bash
 ./mac/build.sh
@@ -20,11 +45,9 @@ To watch stderr while debugging:
 "build/DeepSeek Harness.app/Contents/MacOS/DeepSeekHarness"
 ```
 
-To use the same UI in a normal browser tab — same server, so no lock conflict:
-
-```bash
-./mac/open-in-browser.sh
-```
+The app and a browser tab share one server (see `~/.dsh/web-url`), so they do
+not fight over session locks. `./mac/open-in-browser.sh` is the older Mac-only
+attach script; `npm start` is the cross-platform one.
 
 ## What it does
 
@@ -145,15 +168,18 @@ explicitly (`Shell.loginPATH()`).
 ## Layout
 
 ```
-mac/
-  Sources/main.swift   # everything: locator, server lifecycle, window, menus
-  Info.plist           # bundle metadata + ATS exception for loopback HTTP
-  build.sh             # swiftc → .app → .icns → ad-hoc sign
-  open-in-browser.sh   # same UI in a browser tab, sharing the app's server
-  handoff-to-new-server.sh  # stop a second server that holds session locks
+start.cmd / start.sh / npm start   # Mac + Windows browser launcher
+scripts/harness.mjs                # setup plugins + start dsh web
+mac/                               # optional native macOS .app
+  Sources/                         # WKWebView shell
+  build.sh
 plugins/
-  sidebar-editor/      # editable file tabs inside the DSH right Sidebar
-build/                 # generated, not source
+  knowledge-studio/                # local vaults + retrieval bar
+  sidebar-editor/                  # editable right-sidebar tabs
+  workspace-fork/ conversation-fork/ model-select-fork/ agent-preset-fork/
+  global-skills/
+knowledge/                         # notes + optional local RAG helper
+build/                             # generated, not source
 ```
 
 Runtime state that outlives a process:
@@ -176,7 +202,9 @@ It is a DSH plugin, not part of the Mac app — it works in any DSH web surface,
 including a plain browser. Install it per profile:
 
 ```bash
-dsh plugin --profile web add /Users/alex/Desktop/deepseekharness/plugins/sidebar-editor
+npm run setup
+# or one plugin:
+dsh plugin --profile web add /absolute/path/to/deepseek-harness/plugins/sidebar-editor
 ```
 
 That single command is the whole install: the package declares `dsh.bundle`, so

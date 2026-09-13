@@ -1,0 +1,18 @@
+# Everything in this directory except the source is generated or downloaded.
+# The whole .kb/ tree is excluded from the parent .gitignore; this file is the
+# second line of defence in case someone force-adds .kb/ or copies the
+# directory into a repo that does not have that rule.
+
+# Embedding model weights: ~2-3.6 GB depending on which sizes were fetched.
+.model-cache/
+
+# npm's per-project cache and log dirs (used because the shared ~/.npm cache
+# needs root to write).
+.npm-cache/
+.npm-logs/
+
+# Built retrieval index: ~40 MB of vectors plus the chunk table.
+index/
+
+node_modules/
+*.log

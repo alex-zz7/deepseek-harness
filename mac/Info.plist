@@ -34,6 +34,19 @@
 	<string>用于把你说的话转成文字，填入输入框。</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>用于把麦克风里的语音识别成文字。</string>
+	<!-- Files and Folders. Without these strings, macOS still prompts but
+	     often forgets the grant, so Desktop/Documents/Downloads come back
+	     every launch — especially after a rebuild. -->
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>知识库和资料可能在桌面上，需要读取这些文件才能建索引和提问。</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>知识库和资料可能在「文稿」里，需要读取这些文件才能建索引和提问。</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>知识库和资料可能在「下载」里，需要读取这些文件才能建索引和提问。</string>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>如果你把资料放在外接磁盘上，需要读取这些文件才能建索引和提问。</string>
+	<key>NSNetworkVolumesUsageDescription</key>
+	<string>如果你把资料放在网络磁盘上，需要读取这些文件才能建索引和提问。</string>
 	<key>NSSupportsAutomaticTermination</key>
 	<false/>
 	<key>NSSupportsSuddenTermination</key>

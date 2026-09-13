@@ -55,9 +55,9 @@ let sidebarActionsScript = #"""
       flex: none;
     }
     .dsh-action-button:hover { opacity: 1; background: rgba(127,127,127,.16); }
-    /* The brand row lays out [wordmark] … [collapse toggle]; this sits between
-       them, right of the wordmark. */
     .dsh-brand-action { margin-left: 2px; flex: none; }
+    /* Rail/collapsed sidebar hides the wordmark; keep this button with it. */
+    [class*="logoRow"][data-collapsed="1"] .dsh-brand-action { display: none !important; }
     /* The mic sits in the composer's trailing row, left of Send. */
     .dsh-mic { margin-right: 2px; }
     .dsh-mic[data-state="listening"] { opacity: 1; color: #4d6bfe; }
@@ -65,7 +65,9 @@ let sidebarActionsScript = #"""
     .dsh-mic[data-state="failed"] { opacity: 1; color: #e5484d; }
     .dsh-action-button[data-pinned="true"] { opacity: 1; color: var(--dsw-alias-brand-primary, #4d6bfe); }
     /* Cursor-style dictation: a full-width pill *inside* the composer card.
-       × throws the transcript away, the bars show the live level, ↑ keeps it. */
+       × throws the transcript away, the bars show the live level. While
+       listening the composer's primary button becomes 完成 rather than 发送. */
+    button[class*="primary"][data-dsh-complete="1"] { color: #fff; }
     [data-composer-card].dsh-voice-active { position: relative; }
     [data-composer-card].dsh-voice-active [class*="scroll"] { padding-top: 52px; }
     .dsh-voice {
@@ -339,21 +341,9 @@ let sidebarActionsScript = #"""
     window.dispatchEvent(new CustomEvent('dsh-pins-changed', { detail: { ids: publishedPins } }));
   }
 
-  // ── brand-row browser button ──────────────────────────────────────────
-  //
-  // The product's brand row already lays out `[wordmark] … [collapse toggle]`,
-  // leaving a natural slot between them. A web page cannot open the user's
-  // browser itself, so the click is handed to the shell over a script message.
-  //
-  // The project picker is NOT here: it belongs in the workspace menu above the
-  // composer, next to the other ways of choosing where work happens. That row
-  // is provided by plugins/conversation-fork (always visible) and
-  // plugins/workspace-fork (the "从 GitHub 克隆…" entry).
-
   const BROWSER_PATH =
     '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>';
 
-  /** One small icon button in the brand row. */
   function brandButton(kind, label, paths, message) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -371,19 +361,31 @@ let sidebarActionsScript = #"""
     return button;
   }
 
+  function sidebarIsRail() {
+    const sidebar = document.querySelector('aside') || document.querySelector('nav');
+    if (!sidebar) return false;
+    const cls = String(sidebar.className || '');
+    if (cls.includes('rail') || sidebar.dataset.rail === '1') return true;
+    return sidebar.getBoundingClientRect().width < 88;
+  }
+
   function decorateBrandRow() {
     const row = document.querySelector('[class*="logoRow"]');
-    if (row === null || row.querySelector('[data-dsh-brand-action]') !== null) return;
-
+    if (row === null) return;
+    const collapsed = sidebarIsRail();
+    row.dataset.collapsed = collapsed ? '1' : '0';
+    const existing = row.querySelector('[data-dsh-brand-action]');
+    if (collapsed) {
+      existing?.remove();
+      return;
+    }
+    if (existing !== null) return;
     const browser = brandButton('browser', '在浏览器中打开', BROWSER_PATH, 'dshOpenInBrowser');
-
-    // Directly right of the wordmark and left of the collapse toggle the
-    // product already places at the row's end.
     const brand = row.querySelector('[class*="brand"]');
     if (brand !== null && brand.parentElement === row) {
-      row.insertBefore(browser, brand.nextSibling)
+      row.insertBefore(browser, brand.nextSibling);
     } else {
-      row.appendChild(browser)
+      row.appendChild(browser);
     }
   }
 
@@ -455,11 +457,42 @@ let sidebarActionsScript = #"""
     return prefix + ' ';
   }
 
-  function writeTranscript(text) {
+  function writeField() {
     const field = composerField();
     if (field === undefined || field === null) return;
-    dictated = text;
-    setComposerValue(field, voicePrefix() + text);
+    setComposerValue(field, voicePrefix() + dictated);
+  }
+
+  /**
+   * Apply a live transcript from the shell.
+   *
+   * The shell normally sends the whole session. After a pause it sometimes
+   * sends only the new sentence — treat that as an append, not a replace.
+   */
+  function writeTranscript(text, isFinal) {
+    const incoming = typeof text === 'string' ? text : '';
+    if (!incoming) return;
+    if (isFinal) {
+      dictated = incoming;
+      writeField();
+      return;
+    }
+    if (dictated) {
+      const have = dictated.trim();
+      const next = incoming.trim();
+      const continues =
+        next.toLowerCase().startsWith(have.toLowerCase()) ||
+        have.toLowerCase().startsWith(next.toLowerCase()) ||
+        next.toLowerCase().includes(have.toLowerCase());
+      if (!continues) {
+        voiceBase = voicePrefix() + dictated;
+        dictated = incoming;
+        writeField();
+        return;
+      }
+    }
+    dictated = incoming;
+    writeField();
   }
 
   /** Remove this session's dictated words, leaving anything typed alone. */
@@ -482,6 +515,7 @@ let sidebarActionsScript = #"""
 
   const VOICE_CANCEL_PATH = '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>';
   const VOICE_ARROW_PATH = '<path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>';
+  const VOICE_CHECK_PATH = '<path d="M5 13l5 5L20 7"/>';
   const VOICE_BAR_COUNT = 48;
 
   const voiceLevels = new Array(VOICE_BAR_COUNT).fill(0);
@@ -528,15 +562,13 @@ let sidebarActionsScript = #"""
 
     const finish = document.createElement('button');
     finish.type = 'button';
-    finish.title = '结束听写，保留文字';
-    finish.setAttribute('aria-label', '结束听写，保留文字');
-    finish.appendChild(icon(VOICE_ARROW_PATH, false));
+    finish.title = '完成听写，保留文字';
+    finish.setAttribute('aria-label', '完成听写，保留文字');
+    finish.appendChild(icon(VOICE_CHECK_PATH, false));
     finish.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      dictated = '';
-      closeVoiceBar();
-      postVoice('dshVoiceFinish');
+      finishDictationKeepText();
     });
 
     bar.appendChild(cancel);
@@ -547,11 +579,53 @@ let sidebarActionsScript = #"""
     return bar;
   }
 
+  function isVoiceOpen() {
+    return voiceBar !== null && voiceBar.getAttribute('data-open') === '1';
+  }
+
+  function composerSendButton() {
+    return document.querySelector('[class*="trailing"] button[class*="primary"]');
+  }
+
+  let sendOriginalHTML = null;
+
+  function markSendAsComplete(send) {
+    if (send.dataset.dshComplete === '1') return;
+    sendOriginalHTML = send.innerHTML;
+    send.dataset.dshComplete = '1';
+    send.title = '完成听写';
+    send.setAttribute('aria-label', '完成听写');
+    send.replaceChildren(icon(VOICE_CHECK_PATH, false));
+  }
+
+  function restoreSend(send) {
+    if (send.dataset.dshComplete !== '1') return;
+    send.dataset.dshComplete = '0';
+    if (sendOriginalHTML !== null) send.innerHTML = sendOriginalHTML;
+    send.title = '发送消息';
+    send.setAttribute('aria-label', '发送消息');
+  }
+
+  function syncSendButton() {
+    const send = composerSendButton();
+    if (send === null) return;
+    if (isVoiceOpen()) markSendAsComplete(send);
+    else restoreSend(send);
+  }
+
+  function finishDictationKeepText() {
+    dictated = '';
+    voiceBase = null;
+    closeVoiceBar();
+    postVoice('dshVoiceFinish');
+  }
+
   function openVoiceBar() {
     const bar = ensureVoiceBar();
     if (bar === null) return;
     bar.setAttribute('data-open', '1');
     composerCard()?.classList.add('dsh-voice-active');
+    syncSendButton();
   }
 
   function closeVoiceBar() {
@@ -560,6 +634,7 @@ let sidebarActionsScript = #"""
     composerCard()?.classList.remove('dsh-voice-active');
     voiceLevels.fill(0);
     voiceLevel = 0;
+    syncSendButton();
   }
 
   /**
@@ -584,20 +659,9 @@ let sidebarActionsScript = #"""
     }
   };
 
-  /** Stop recognition because the message is being sent. */
-  function stopDictationForSend() {
-    if (voiceBar === null || voiceBar.getAttribute('data-open') !== '1') return;
-    // The composer already holds the text, so release the span and tell the
-    // shell to stop silently — republishing would rewrite the field mid-send.
-    dictated = '';
-    voiceBase = null;
-    closeVoiceBar();
-    postVoice('dshVoiceFinish');
-  }
-
   /** Replace the running transcript against the captured prefix, not the field. */
-  window.__dshVoiceText = (text) => {
-    writeTranscript(typeof text === 'string' ? text : '');
+  window.__dshVoiceText = (text, isFinal) => {
+    writeTranscript(typeof text === 'string' ? text : '', isFinal === true);
   };
 
   /** Reflect the recorder's state on the button. */
@@ -655,27 +719,35 @@ let sidebarActionsScript = #"""
   }
 
   /**
-   * Sending has to stop recognition too.
-   *
-   * The composer is read and then cleared by the page; a transcript arriving
-   * after that would land in the next draft. Capture phase, so the shell is
-   * told before the page's own handler runs.
+   * While listening, the primary button and Enter mean "完成听写", not send.
+   * Capture phase so the page's own submit handler never runs.
    */
   function decorateSendGuard() {
-    const row = document.querySelector('[class*="trailing"]');
-    const send = row?.querySelector('button[class*="primary"]');
+    const send = composerSendButton();
     if (send !== undefined && send !== null && send.dataset.dshVoiceSend !== '1') {
       send.dataset.dshVoiceSend = '1';
-      send.addEventListener('pointerdown', stopDictationForSend, true);
-      send.addEventListener('click', stopDictationForSend, true);
+      const intercept = (event) => {
+        if (!isVoiceOpen()) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        finishDictationKeepText();
+      };
+      send.addEventListener('pointerdown', intercept, true);
+      send.addEventListener('click', intercept, true);
     }
+    syncSendButton();
     const field = composerField();
     if (field !== undefined && field !== null && field.dataset.dshVoiceEnter !== '1') {
       field.dataset.dshVoiceEnter = '1';
       field.addEventListener(
         'keydown',
         (event) => {
-          if (event.key === 'Enter' && !event.shiftKey) stopDictationForSend();
+          if (event.key !== 'Enter' || event.shiftKey || !isVoiceOpen()) return;
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          finishDictationKeepText();
         },
         true,
       );

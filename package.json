@@ -1,0 +1,10 @@
+{
+  "name": "deepseek-harness",
+  "private": true,
+  "description": "Local DeepSeek agent UI. Same dsh web surface on macOS and Windows.",
+  "scripts": {
+    "setup": "node scripts/harness.mjs setup",
+    "start": "node scripts/harness.mjs start",
+    "build:mac": "bash mac/build.sh"
+  }
+}

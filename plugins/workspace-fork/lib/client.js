@@ -27,6 +27,317 @@ window.__ModuleLoader__.load({
 				console.warn("workspace rehome failed:", reason);
 			}
 		}
+		const KS_BUS = "knowledge-studio-config";
+		const KS_ACTION = "knowledge-studio-action";
+		const KS_PAGE = "knowledge-studio-page";
+		const PAGE_STORE = "dsh-knowledge-page";
+		function isHarnessApp() {
+			if (typeof window === "undefined") return false;
+			if (window.__DSH_SIDEBAR_ACTIONS__ === true) return true;
+			try {
+				return window.webkit?.messageHandlers?.dshPickWorkspace !== undefined;
+			} catch {
+				return false;
+			}
+		}
+		try {
+			window.__KS_PAGE__ = isHarnessApp() && window.localStorage.getItem(PAGE_STORE) !== "0";
+		} catch {
+			window.__KS_PAGE__ = isHarnessApp();
+		}
+		function normalizeVaultPath(value) {
+			return String(value || "").replace(/\/+$/, "");
+		}
+		function suggestedVaultName(path) {
+			const base = normalizeVaultPath(path).split("/").filter(Boolean).pop() || "知识库";
+			return base === "knowledge" ? "知识库" : base;
+		}
+		function vaultForPath(vaults, path) {
+			const resolved = normalizeVaultPath(path);
+			return (vaults || []).find((vault) => normalizeVaultPath(vault.root) === resolved);
+		}
+		function looksLikeVaultPath(path) {
+			const text = normalizeVaultPath(path);
+			return text.endsWith("/knowledge") || text.includes("/knowledge-vaults/");
+		}
+		function isVaultWorkspace(workspace, vaults) {
+			return Boolean(vaultForPath(vaults, workspace?.path)) || looksLikeVaultPath(workspace?.path);
+		}
+		function partitionWorkspaces(workspaces, vaults) {
+			const vaultRows = [];
+			const regularRows = [];
+			for (const workspace of workspaces || []) {
+				(isVaultWorkspace(workspace, vaults) ? vaultRows : regularRows).push(workspace);
+			}
+			return { vaultRows, regularRows };
+		}
+		function resolveVaultCatalog(vaults, workspaces) {
+			const known = [];
+			const have = new Set();
+			const push = (vault) => {
+				const root = normalizeVaultPath(vault?.root);
+				if (!root || have.has(root)) return;
+				have.add(root);
+				known.push({
+					...vault,
+					root
+				});
+			};
+			for (const vault of vaults?.length ? vaults : vaultCache) push(vault);
+			for (const workspace of workspaces || []) {
+				if (!looksLikeVaultPath(workspace.path)) continue;
+				push({
+					id: workspace.workspaceId || normalizeVaultPath(workspace.path),
+					name: workspace.title || suggestedVaultName(workspace.path),
+					root: workspace.path
+				});
+			}
+			return known;
+		}
+		function pageWorkspaces(workspaces, vaults, knowledgePage) {
+			if (!isHarnessApp()) return workspaces || [];
+			const partitioned = partitionWorkspaces(workspaces, vaults);
+			return effectiveKnowledgePage(knowledgePage) ? partitioned.vaultRows : partitioned.regularRows;
+		}
+		function effectiveKnowledgePage(requested) {
+			return isHarnessApp() && requested === true;
+		}
+		const VAULT_STORE = "dsh-knowledge-vaults";
+		function readStoredVaults() {
+			try {
+				const parsed = JSON.parse(window.localStorage.getItem(VAULT_STORE) || "[]");
+				return Array.isArray(parsed) ? parsed.filter((row) => row && row.id && row.root) : [];
+			} catch {
+				return [];
+			}
+		}
+		let vaultCache = readStoredVaults();
+		function rememberVaults(list, { replace = false } = {}) {
+			if (!Array.isArray(list)) return vaultCache.length ? vaultCache : readStoredVaults();
+			if (list.length === 0 && !replace) return vaultCache.length ? vaultCache : readStoredVaults();
+			if (!replace && vaultCache.length > list.length) {
+				const byRoot = new Map(list.map((vault) => [normalizeVaultPath(vault.root), vault]));
+				for (const old of vaultCache) {
+					const key = normalizeVaultPath(old.root);
+					if (!byRoot.has(key)) byRoot.set(key, old);
+				}
+				list = [...byRoot.values()];
+			}
+			vaultCache = list;
+			try {
+				window.localStorage.setItem(VAULT_STORE, JSON.stringify(list));
+			} catch {}
+			return vaultCache;
+		}
+		async function ksApi(path, opts) {
+			const response = await fetch(path, {
+				headers: { "content-type": "application/json" },
+				...opts
+			});
+			const body = await response.json().catch(() => ({}));
+			if (!response.ok && body.ok !== true) throw new Error(body.message || body.code || `HTTP ${response.status}`);
+			return body;
+		}
+		function publishVaults(detail) {
+			const vaults = rememberVaults(detail?.vaults, { replace: detail?.replace === true });
+			window.dispatchEvent(new CustomEvent(KS_BUS, {
+				detail: detail && typeof detail === "object" ? { ...detail, vaults } : { vaults }
+			}));
+		}
+		function selectVaultForPath(path) {
+			if (!path) return;
+			ksApi("/knowledge-studio/config").then((cfg) => {
+				const vault = vaultForPath(cfg.vaults || [], path);
+				if (vault && !vault.isActive) {
+					return ksApi("/knowledge-studio/config", {
+						method: "POST",
+						body: JSON.stringify({ action: "select", id: vault.id })
+					}).then(publishVaults);
+				}
+			}).catch(() => {});
+		}
+		function notifyStudio(detail) {
+			window.dispatchEvent(new CustomEvent(KS_ACTION, { detail }));
+		}
+		async function adoptVault(path, name) {
+			const next = await ksApi("/knowledge-studio/config", {
+				method: "POST",
+				body: JSON.stringify({
+					action: "add",
+					root: path,
+					name: name || suggestedVaultName(path)
+				})
+			});
+			publishVaults(next);
+			return next;
+		}
+		async function attachCreatedVault(workspaces, created) {
+			publishVaults(created);
+			const vaultRoot = created.vaultRoot;
+			const existing = workspaceSnapshotItems(workspaces).find((row) => normalizeVaultPath(row.path) === normalizeVaultPath(vaultRoot));
+			if (existing) return existing;
+			try {
+				return await workspaces.create({
+					path: vaultRoot,
+					title: created.activeName || suggestedVaultName(vaultRoot)
+				});
+			} catch (error) {
+				const again = workspaceSnapshotItems(workspaces).find((row) => normalizeVaultPath(row.path) === normalizeVaultPath(vaultRoot));
+				if (again) return again;
+				throw error;
+			}
+		}
+		function pickMaterialsInApp() {
+			return new Promise((resolve, reject) => {
+				const handler = window.webkit?.messageHandlers?.dshPickMaterials;
+				if (handler === undefined) {
+					reject(new Error("no-native"));
+					return;
+				}
+				window.__dshPickedMaterials = (paths) => {
+					window.__dshPickedMaterials = undefined;
+					if (!Array.isArray(paths) || paths.length === 0) reject(new Error("已取消"));
+					else resolve(paths);
+				};
+				handler.postMessage("materials");
+			});
+		}
+		async function createKnowledgeWorkspace(workspaces, input) {
+			let sourcePaths = Array.isArray(input?.sourcePaths)
+				? input.sourcePaths
+				: input?.path && !input.pickMaterials
+					? [input.path]
+					: [];
+			if (sourcePaths.length === 0) {
+				try {
+					sourcePaths = await pickMaterialsInApp();
+				} catch (error) {
+					if (error instanceof Error && error.message === "已取消") throw error;
+				}
+			}
+			const created = sourcePaths.length > 0
+				? await ksApi("/knowledge-studio/create", {
+					method: "POST",
+					body: JSON.stringify({
+						sourcePaths,
+						name: suggestedVaultName(sourcePaths[0])
+					})
+				})
+				: await ksApi("/knowledge-studio/create", {
+					method: "POST",
+					body: JSON.stringify({})
+				});
+			if (created.cancelled) throw new Error("已取消");
+			const workspace = await attachCreatedVault(workspaces, created);
+			if (created.setup === true || created.hasIndex !== true) {
+				await new Promise((resolve) => setTimeout(resolve, 280));
+				notifyStudio({
+					kind: "setup",
+					vaultId: created.createdId || created.activeId
+				});
+			}
+			return workspace;
+		}
+		function useKnowledgeVaults() {
+			const [vaults, setVaults] = (0, react.useState)(() => vaultCache);
+			(0, react.useEffect)(() => {
+				let alive = true;
+				const pull = () => {
+					ksApi("/knowledge-studio/config").then((data) => {
+						const next = rememberVaults(data.vaults, { replace: true });
+						if (alive) setVaults(next.slice());
+					}).catch(() => {});
+				};
+				pull();
+				const onBus = (event) => {
+					const next = rememberVaults(event.detail?.vaults, { replace: event.detail?.replace === true });
+					if (Array.isArray(event.detail?.vaults)) setVaults(next.slice());
+					else pull();
+				};
+				window.addEventListener(KS_BUS, onBus);
+				const timer = window.setInterval(pull, 8000);
+				return () => {
+					alive = false;
+					window.removeEventListener(KS_BUS, onBus);
+					window.clearInterval(timer);
+				};
+			}, []);
+			return vaults.length ? vaults : vaultCache;
+		}
+		function workspaceSnapshotItems(workspaces) {
+			try {
+				return workspaces.list.getSnapshot().items || [];
+			} catch {
+				return [];
+			}
+		}
+		function writeKnowledgePage(open) {
+			if (!isHarnessApp()) open = false;
+			const next = Boolean(open);
+			if (window.__KS_PAGE__ === next) return;
+			window.__KS_PAGE__ = next;
+			try {
+				window.localStorage.setItem(PAGE_STORE, next ? "1" : "0");
+			} catch {}
+			window.dispatchEvent(new CustomEvent(KS_PAGE, { detail: { open: next } }));
+			fetch("/sidebar-editor/ui-state", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ knowledgePage: next })
+			}).catch(() => {});
+		}
+		function readKnowledgePage() {
+			return window.__KS_PAGE__ === true;
+		}
+		function useKnowledgePage() {
+			const [open, setOpen] = (0, react.useState)(() => window.__KS_PAGE__ === true);
+			(0, react.useEffect)(() => {
+				const sync = (event) => {
+					setOpen(event?.detail && "open" in event.detail ? event.detail.open === true : window.__KS_PAGE__ === true);
+				};
+				window.addEventListener(KS_PAGE, sync);
+				const timer = window.setInterval(() => {
+					setOpen((current) => {
+						const next = window.__KS_PAGE__ === true;
+						return current === next ? current : next;
+					});
+				}, 400);
+				return () => {
+					window.removeEventListener(KS_PAGE, sync);
+					window.clearInterval(timer);
+				};
+			}, []);
+			return open;
+		}
+		function sessionIsVault(session, workspaces, vaults) {
+			if (!session) return false;
+			if (vaultForPath(vaults, session.cwd) || looksLikeVaultPath(session.cwd)) return true;
+			const owner = (workspaces || []).find((workspace) => workspace.sessionIds.includes(session.id));
+			return Boolean(owner && isVaultWorkspace(owner, vaults));
+		}
+		function filterWorkspacesForPage(workspaces, vaults, knowledgePage) {
+			return pageWorkspaces(workspaces, vaults, knowledgePage);
+		}
+		function filterSessionListForPage(list, workspaces, vaults, knowledgePage) {
+			if (!isHarnessApp()) return list;
+			const wantVault = effectiveKnowledgePage(knowledgePage);
+			const byId = {};
+			const ids = [];
+			for (const id of list.ids || []) {
+				const session = list.byId[id];
+				if (!session) continue;
+				if (sessionIsVault(session, workspaces, vaults) === wantVault) {
+					ids.push(id);
+					byId[id] = session;
+				}
+			}
+			return {
+				...list,
+				ids,
+				byId,
+				current: list.current && byId[list.current] ? list.current : void 0
+			};
+		}
 		/** Structured directory failure exposed to directory UI consumers. */
 		var DirectoryBrowseError = class extends Error {
 			rpcError;
@@ -44,6 +355,7 @@ window.__ModuleLoader__.load({
 			sessions;
 			connecting = /* @__PURE__ */ new Map();
 			lifetime = new AbortController();
+			recoveringArchive = false;
 			/**
 			* @param ctx - Client root Context.
 			* @param directoryPicker - the directory-picking Remote namespace.
@@ -109,12 +421,13 @@ window.__ModuleLoader__.load({
 			startSession(workspaceId) {
 				const workspace = this.workspaces.list.getSnapshot();
 				const sessions = this.sessions.list.getSnapshot();
+				const catalog = vaultCache;
+				const eligible = pageWorkspaces(workspace.items, catalog, readKnowledgePage());
 				const current = sessions.current;
-				const currentWorkspaceId = current === void 0 ? void 0 : workspace.items.find((item) => item.sessionIds.includes(current))?.workspaceId;
-				const recent = workspace.phase === "ready" && sessions.phase === "ready" ? recentWorkspace(workspace.items, sessions.byId) : void 0;
+				const currentWorkspaceId = current === void 0 ? void 0 : eligible.find((item) => item.sessionIds.includes(current))?.workspaceId;
+				const recent = workspace.phase === "ready" && sessions.phase === "ready" ? recentWorkspace(eligible, sessions.byId) : void 0;
 				const target = workspaceId ?? currentWorkspaceId ?? recent;
 				if (target === void 0) {
-					this.sessions.clear();
 					this.ctx.layout.selectPanel(null);
 					return;
 				}
@@ -123,7 +436,9 @@ window.__ModuleLoader__.load({
 				});
 			}
 			async archiveSession(sessionId) {
+				const wasCurrent = this.sessions.list.getSnapshot().current === sessionId;
 				await this.workspaces.archiveSession(sessionId);
+				if (wasCurrent) this.recoverFromArchivedCurrent();
 			}
 			async pickDirectory() {
 				const result = await this.directoryPicker.pick();
@@ -178,12 +493,49 @@ window.__ModuleLoader__.load({
 					disposeWorkspaces();
 				};
 			}
-			/** @returns true when an archived current selection was cleared. */
+			/** @returns true when an archived current selection was handled. */
 			clearArchivedCurrent() {
 				const current = this.sessions.list.getSnapshot().current;
-				if (current === void 0 || !this.workspaces.list.getSnapshot().archivedSessionIds.includes(current)) return false;
-				this.sessions.clear();
+				if (current === void 0 || !this.workspaces.list.getSnapshot().archivedSessionIds.includes(current)) {
+					this.recoveringArchive = false;
+					return false;
+				}
+				if (this.recoveringArchive) return true;
+				this.recoveringArchive = true;
+				this.recoverFromArchivedCurrent();
 				return true;
+			}
+			/**
+			 * Archiving or deleting the open session used to `sessions.clear()`,
+			 * which wiped the sidebar. Stay on this page and open a sibling.
+			 */
+			recoverFromArchivedCurrent() {
+				const workspace = this.workspaces.list.getSnapshot();
+				const sessions = this.sessions.list.getSnapshot();
+				const archived = new Set(workspace.archivedSessionIds);
+				const current = sessions.current;
+				const owner = workspace.items.find((item) => item.sessionIds.includes(current));
+				const firstLive = (item) => (item?.sessionIds || []).find((id) => !archived.has(id) && sessions.byId[id]);
+				const sibling = firstLive(owner);
+				if (sibling) {
+					this.openSession(sibling);
+					return;
+				}
+				if (owner) {
+					this.startSession(owner.workspaceId);
+					return;
+				}
+				const catalog = vaultCache;
+				const pool = pageWorkspaces(workspace.items, catalog, readKnowledgePage());
+				for (const item of pool) {
+					const id = firstLive(item);
+					if (id) {
+						this.openSession(id);
+						return;
+					}
+				}
+				const fallback = pool[0]?.workspaceId;
+				if (fallback) this.startSession(fallback);
 			}
 		};
 		/** Stable tie-breaking follows Host Workspace order. */
@@ -372,7 +724,8 @@ window.__ModuleLoader__.load({
 		* and the renderer localizes its display label.
 		*/
 		function sessionTitle(session) {
-			return session.blank ? "" : session.displayTitle;
+			if (session.blank) return "";
+			return String(session.displayTitle || "").split("<knowledge_context", 1)[0].trim();
 		}
 		/** The list projection alone owns the best-effort active-Schedule indicator. */
 		function hasActiveSchedule(session) {
@@ -414,6 +767,25 @@ window.__ModuleLoader__.load({
 		* outside every Workspace trail in the browser-local Ungrouped order, which
 		* falls back to recency before that order is initialized.
 		*/
+		function sessionsForVault(vault, list, workspaces, archived) {
+			const root = normalizeVaultPath(vault.root);
+			const owner = (workspaces || []).find((workspace) => normalizeVaultPath(workspace.path) === root);
+			const owned = new Set(owner?.sessionIds || []);
+			const members = [];
+			for (const id of list.ids || []) {
+				const session = list.byId[id];
+				if (!session || !sessionVisible(session, list.current, archived)) continue;
+				if (normalizeVaultPath(session.cwd) === root || owned.has(session.id)) members.push(session);
+			}
+			return members;
+		}
+		function groupByVaults(list, vaults, workspaces, archived) {
+			return (vaults || []).map((vault) => {
+				const root = normalizeVaultPath(vault.root);
+				const owner = (workspaces || []).find((workspace) => normalizeVaultPath(workspace.path) === root);
+				return buildGroup(owner?.workspaceId || vault.id, owner?.workspaceId, root, undefined, vault.name, sessionsForVault(vault, list, workspaces, archived), "account");
+			});
+		}
 		function groupByWorkspace(list, workspaces, archived, ungroupedOrder) {
 			const groups = [];
 			const accounted = /* @__PURE__ */ new Set();
@@ -471,7 +843,7 @@ window.__ModuleLoader__.load({
 		* @returns pinned session ids, most-important first.
 		*/
 		function readPinnedIds() {
-			if (typeof window === "undefined" || window.__DSH_SIDEBAR_ACTIONS__ !== true) return [];
+			if (!isHarnessApp()) return [];
 			const ids = window.__DSH_PIN_IDS__;
 			return Array.isArray(ids) ? ids.filter((id) => typeof id === "string") : [];
 		}
@@ -497,7 +869,7 @@ window.__ModuleLoader__.load({
 		* @param pinnedIds - app-supplied pinned session ids; empty in a browser.
 		* @returns group sections in render order.
 		*/
-		function deriveGroups(list, workspaces, archivedSessionIds, pendingInteractions, view, pinnedIds) {
+		function deriveGroups(list, workspaces, archivedSessionIds, pendingInteractions, view, pinnedIds, vaults) {
 			const archived = new Set(archivedSessionIds);
 			const expandedGroups = new Set(view.expandedGroups);
 			const descendants = indexSubagentDescendants(list.byId);
@@ -527,7 +899,7 @@ window.__ModuleLoader__.load({
 				}
 			}
 			const pinnedSet = new Set(wanted);
-			for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder)) {
+			for (const g of vaults?.length ? groupByVaults(list, vaults, workspaces, archived) : groupByWorkspace(list, workspaces, archived, view.ungroupedOrder)) {
 				const expanded = expandedGroups.has(g.key);
 				// A pinned session lives in the Pinned section, not twice.
 				const own = pinnedSet.size === 0 ? g.sessions : g.sessions.filter((session) => !pinnedSet.has(session.id));
@@ -780,21 +1152,39 @@ window.__ModuleLoader__.load({
 			const label = row.pinned === true ? row.label : row.workspaceId === void 0 ? t("group.ungrouped") : row.label;
 			const active = group.expanded && group.containsCurrent;
 			const [menuOpen, setMenuOpen] = (0, react.useState)(false);
-			const workspaceMenuItems = [{
+			const vaultMenuItems = actions?.ingest === void 0 ? [] : [{
+				id: "settings",
+				label: t("kb.settings")
+			}, {
+				id: "ingest",
+				label: t("kb.ingest")
+			}, {
+				id: "rebuild",
+				label: t("kb.rebuild")
+			}, ...actions.setDefault === void 0 ? [] : [{
+				id: "default",
+				label: t("kb.default")
+			}]];
+			const workspaceMenuItems = [...vaultMenuItems, {
 				id: "rename",
 				label: t("rename"),
 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutline16, {})
-			}, {
+			}, ...actions?.delete === void 0 ? [] : [{
 				id: "delete",
-				label: t("delete.workspace"),
+				label: actions?.ingest === void 0 ? t("delete.workspace") : t("kb.delete"),
 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutline16, {}),
 				danger: true
-			}];
+			}]];
 			const ownRow = (0, react_jsx_runtime.jsxs)("div", {
 				className: clsx(Rows_module_css_default.projectRow, menuOpen && Rows_module_css_default.menuOpen),
 				role: "treeitem",
 				"aria-expanded": row.expanded,
 				onClick: onToggle,
+				onContextMenu: actions === void 0 ? void 0 : (e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					setMenuOpen(true);
+				},
 				draggable: drag !== void 0,
 				onDragStart: drag === void 0 ? void 0 : (e) => {
 					e.dataTransfer.effectAllowed = "move";
@@ -828,10 +1218,12 @@ window.__ModuleLoader__.load({
 							items: workspaceMenuItems,
 							onSelect: (id) => {
 								setMenuOpen(false);
-								/* v8 ignore next -- Menu can emit only the rename and delete rows supplied above. */
-								if (id !== "rename" && id !== "delete") return;
-								if (id === "rename") actions.rename();
-								else actions.delete();
+								if (id === "settings") actions.settings?.();
+								else if (id === "ingest") actions.ingest();
+								else if (id === "rebuild") actions.rebuild();
+								else if (id === "default") actions.setDefault?.();
+								else if (id === "rename") actions.rename();
+								else if (id === "delete") actions.delete();
 							},
 							portal: true,
 							closeOnPointerLeave: true,
@@ -1188,6 +1580,63 @@ window.__ModuleLoader__.load({
 		function stopMenuWheel(event) {
 			event.stopPropagation();
 		}
+		function workspaceChipRect() {
+			const chip = document.querySelector('button[aria-haspopup="menu"][aria-label="选择工作区"]')
+				?? document.querySelector('button[aria-haspopup="menu"][aria-label="Choose workspace"]')
+				?? document.querySelector('button[class*="workspace"][aria-haspopup="menu"]');
+			return chip?.getBoundingClientRect?.() ?? null;
+		}
+		function placeCursorPicker(rect, paneWidth, side) {
+			const gap = 8;
+			const margin = 12;
+			const minH = 220;
+			const maxH = 420;
+			const vw = window.innerWidth;
+			const vh = window.innerHeight;
+			const fallback = rect ?? workspaceChipRect() ?? {
+				left: Math.max(margin, (vw - paneWidth) / 2),
+				right: Math.max(margin, (vw - paneWidth) / 2) + paneWidth,
+				top: vh * 0.58,
+				bottom: vh * 0.64,
+				width: paneWidth,
+				height: 32
+			};
+			const left = Math.max(margin, Math.min(Math.round(fallback.left), vw - paneWidth - margin));
+			if (side === "right" && fallback.right + gap + paneWidth <= vw - margin) {
+				const top = Math.max(margin, Math.min(Math.round(fallback.top), vh - minH - margin));
+				const maxHeight = Math.max(minH, Math.min(maxH, vh - top - margin));
+				return {
+					style: { top, left: Math.round(fallback.right + gap), maxHeight, height: maxHeight, alignItems: "flex-start" },
+					maxHeight
+				};
+			}
+			const spaceAbove = fallback.top - gap - margin;
+			const spaceBelow = vh - fallback.bottom - gap - margin;
+			const openUp = spaceAbove >= minH || spaceAbove >= spaceBelow;
+			const maxHeight = Math.max(minH, Math.min(maxH, openUp ? spaceAbove : spaceBelow));
+			if (openUp) {
+				return {
+					style: {
+						bottom: Math.max(margin, Math.round(vh - fallback.top + gap)),
+						left,
+						maxHeight,
+						height: maxHeight,
+						alignItems: "flex-end"
+					},
+					maxHeight
+				};
+			}
+			return {
+				style: {
+					top: Math.max(margin, Math.round(fallback.bottom + gap)),
+					left,
+					maxHeight,
+					height: maxHeight,
+					alignItems: "flex-start"
+				},
+				maxHeight
+			};
+		}
 		const ICON_FOLDER = "M2.5 4.5h4l1.2 1.5H13.5v7H2.5z";
 		const ICON_CLOUD = "M5 12.5h6.2A2.8 2.8 0 0 0 14 9.8 2.7 2.7 0 0 0 11.6 7 3.4 3.4 0 0 0 5.2 7.6 2.4 2.4 0 0 0 5 12.5z";
 		const ICON_PLUS = "M8 3.5v9M3.5 8h9";
@@ -1208,7 +1657,7 @@ window.__ModuleLoader__.load({
 				]
 			});
 		}
-		function CursorWorkspaceMenu({ open, getAnchorRect, anchorRef, workspaces, selectedId, currentTitle, createWorkspace, onPick, onClose, openDirectoryFlow }) {
+		function CursorWorkspaceMenu({ open, getAnchorRect, anchorRef, side = "top", workspaces, selectedId, currentTitle, createWorkspace, onPick, onClose, openDirectoryFlow }) {
 			const [query, setQuery] = (0, react.useState)("");
 			const [flyout, setFlyout] = (0, react.useState)(null);
 			const [remoteQuery, setRemoteQuery] = (0, react.useState)("");
@@ -1347,11 +1796,9 @@ window.__ModuleLoader__.load({
 				return folder.name.toLowerCase().includes(remoteNeedle);
 			});
 			const rect = getAnchorRect?.() ?? null;
-			const gap = 8;
 			const paneWidth = flyout ? 540 : 280;
-			const left = Math.max(12, Math.min(Math.round(rect?.left ?? 24), window.innerWidth - paneWidth - 12));
-			const bottom = Math.max(12, Math.round(window.innerHeight - (rect?.top ?? 96) + gap));
-			const maxHeight = Math.max(220, Math.min(420, Math.round((rect?.top ?? 96) - gap - 12)));
+			const placed = placeCursorPicker(rect, paneWidth, side);
+			const maxHeight = placed.maxHeight;
 			const toggleRepo = (key) => {
 				setPicked((current) => {
 					const next = new Set(current);
@@ -1371,7 +1818,7 @@ window.__ModuleLoader__.load({
 				ref: rootRef,
 				className: "dsh-cursor-picker",
 				"data-flyout": flyout ? "1" : undefined,
-				style: { bottom, left, maxHeight },
+				style: placed.style,
 				children: [
 					(0, react_jsx_runtime.jsxs)("div", {
 						className: "dsh-cursor-pane dsh-cursor-pane-left",
@@ -1526,9 +1973,18 @@ window.__ModuleLoader__.load({
 		* @returns menu + dialog elements.
 		*/
 		function WorkspacePickFlow({ t, open, anchorRef, useWorkspaces, createWorkspace, useDirectoryFlow, renderDirectoryFlow, onPick, onClose, addOnly = false, side = "bottom", selectedId }) {
+			const knowledgePage = useKnowledgePage();
+			const vaults = useKnowledgeVaults();
 			const workspaceSnapshot = useWorkspaces((state) => state);
-			const workspaces = workspaceSnapshot.items;
-			const getAnchorRect = (0, react.useCallback)(() => anchorRef?.current?.getBoundingClientRect() ?? null, [anchorRef]);
+			const workspaces = filterWorkspacesForPage(workspaceSnapshot.items, vaults, knowledgePage);
+			const getAnchorRect = (0, react.useCallback)(() => {
+				const node = anchorRef?.current;
+				if (node && typeof node.getBoundingClientRect === "function") {
+					const box = node.getBoundingClientRect();
+					if (box.width > 0 || box.height > 0) return box;
+				}
+				return workspaceChipRect();
+			}, [anchorRef]);
 			const [errorOpen, setErrorOpen] = (0, react.useState)(false);
 			const [modalError, setModalError] = (0, react.useState)(null);
 			const [flowOpen, setFlowOpen] = (0, react.useState)(false);
@@ -1538,14 +1994,25 @@ window.__ModuleLoader__.load({
 			(0, react.useEffect)(() => {
 				if (flowOpen && !flowAvailable) setFlowOpen(false);
 			}, [flowOpen, flowAvailable]);
-			const addEntries = flowAvailable ? [{
+			const addKnowledge = (0, react.useCallback)(() => {
+				onClose();
+				createWorkspace({ pickMaterials: true }).then((workspace) => {
+					if (workspace?.workspaceId) onPick(workspace.workspaceId);
+				}).catch((reason) => {
+					const text = reason instanceof Error ? reason.message : String(reason);
+					if (text === "已取消") return;
+					setModalError(text);
+					setErrorOpen(true);
+				});
+			}, [createWorkspace, onClose, onPick]);
+			const addEntries = knowledgePage || flowAvailable ? [{
 				id: ADD_WORKSPACE,
-				label: t("menu.addWorkspace"),
+				label: knowledgePage ? t("kb.add") : t("menu.addWorkspace"),
 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutline16, { size: 16 }),
 				disabled: flowBusy
 			}] : [];
 			const pinAdd = !addOnly && workspaces.length > 0;
-			const appOnly = typeof window !== "undefined" && window.__DSH_SIDEBAR_ACTIONS__ === true;
+			const appOnly = isHarnessApp() && !knowledgePage;
 			const githubEntry = {
 				id: GITHUB_CLONE,
 				label: "从 GitHub 克隆…",
@@ -1554,7 +2021,7 @@ window.__ModuleLoader__.load({
 			};
 			const items = pinAdd ? workspaces.map((workspace) => ({
 				id: workspace.workspaceId,
-				label: workspace.title,
+				label: vaultForPath(vaults, workspace.path)?.name || workspace.title,
 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderClose16, { size: 16 }),
 				disabled: flowBusy
 			})).concat(appOnly ? [githubEntry] : []) : addEntries.concat(appOnly ? [githubEntry] : []);
@@ -1581,10 +2048,11 @@ window.__ModuleLoader__.load({
 			const listSettled = addOnly || workspaceSnapshot.phase === "ready";
 			const addIsTheOnlyEntry = !pinAdd && listSettled && addEntries.length === 1;
 			(0, react.useEffect)(() => {
-				if (appOnly) return;
+				if (appOnly || knowledgePage) return;
 				if (open && addIsTheOnlyEntry && !flowBusy) openDirectoryFlow();
 			}, [
 				appOnly,
+				knowledgePage,
 				open,
 				addIsTheOnlyEntry,
 				flowBusy,
@@ -1611,7 +2079,8 @@ window.__ModuleLoader__.load({
 			};
 			const handleSelect = (id) => {
 				if (id === ADD_WORKSPACE) {
-					openDirectoryFlow();
+					if (knowledgePage) addKnowledge();
+					else openDirectoryFlow();
 					return;
 				}
 				if (id === GITHUB_CLONE) {
@@ -1630,6 +2099,7 @@ window.__ModuleLoader__.load({
 					open,
 					getAnchorRect,
 					anchorRef,
+					side,
 					workspaces,
 					selectedId,
 					currentTitle,
@@ -1654,7 +2124,7 @@ window.__ModuleLoader__.load({
 					role: "status",
 					children: t("picker.loading")
 				}),
-				renderDirectoryFlow(flowOwner),
+				knowledgePage ? null : renderDirectoryFlow(flowOwner),
 				(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Modal, {
 					open: errorOpen,
 					onClose: closeModal,
@@ -1948,9 +2418,97 @@ window.__ModuleLoader__.load({
 			return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
 		}
 		/** The scrolling session tree; unmounting drops the sessions subscription and expand-all state. */
-		function SessionTree({ useSessions, useSessionPendingInteraction, startSession, open, forkSession, workspaces, archivedSessionIds, workspaceReady, usePanelInfo, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, insertWorkspaceBefore, insertSessionBefore, orderBy, groupExpansion, setGroupExpanded, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t, revealSessionId, onSessionRevealed }) {
+		function SessionTree({ useSessions, useSessionPendingInteraction, startSession, open, forkSession, workspaces: allWorkspaces, archivedSessionIds, workspaceReady, usePanelInfo, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, insertWorkspaceBefore, insertSessionBefore, orderBy, groupExpansion, setGroupExpanded, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t, revealSessionId, onSessionRevealed }) {
+			const knowledgePage = useKnowledgePage();
+			const vaults = useKnowledgeVaults();
+			const workspaces = (0, react.useMemo)(() => filterWorkspacesForPage(allWorkspaces, vaults, knowledgePage), [
+				allWorkspaces,
+				vaults,
+				knowledgePage
+			]);
+			const rawList = useSessions((s) => s);
+			const list = (0, react.useMemo)(() => filterSessionListForPage(rawList, allWorkspaces, vaults, knowledgePage), [
+				rawList,
+				allWorkspaces,
+				vaults,
+				knowledgePage
+			]);
+			const runVaultAction = (group, kind) => {
+				const path = group.cwd;
+				if (!path) return;
+				const name = group.label;
+				const work = async () => {
+					const adopted = await adoptVault(path, name);
+					const vault = vaultForPath(adopted.vaults, path) || adopted.vaults?.find((item) => item.isActive);
+					const vaultId = vault?.id;
+					if (kind === "settings") {
+						notifyStudio({ kind: "settings", vaultId });
+						return;
+					}
+					if (kind === "ingest") {
+						notifyStudio({ kind: "working", text: "正在选择文件…" });
+						const result = await ksApi("/knowledge-studio/pick-ingest", {
+							method: "POST",
+							body: JSON.stringify({ vaultId })
+						});
+						if (result.cancelled) {
+							notifyStudio({ kind: "ok", text: "已取消" });
+							return;
+						}
+						const imported = result.files || [];
+						const skipped = result.skipped || [];
+						if (imported.length === 0) {
+							notifyStudio({
+								kind: "error",
+								text: skipped.length ? `没有导入。已跳过：${skipped.join("、")}` : "没有选到可导入的文档"
+							});
+							return;
+						}
+						const status = await ksApi("/knowledge-studio/status");
+						if (status.hasIndex !== true) {
+							notifyStudio({ kind: "setup", vaultId });
+							return;
+						}
+						notifyStudio({
+							kind: "working",
+							text: `已导入 ${imported.join("、")}${skipped.length ? `。跳过 ${skipped.join("、")}` : ""}。正在扫描并更新索引…`
+						});
+						await ksApi("/knowledge-studio/rebuild", {
+							method: "POST",
+							body: JSON.stringify({ vaultId, force: false })
+						});
+						notifyStudio({ kind: "watch-rebuild" });
+						return;
+					}
+					if (kind === "rebuild") {
+						notifyStudio({
+							kind: "working",
+							text: "正在扫描变更并更新索引…"
+						});
+						await ksApi("/knowledge-studio/rebuild", {
+							method: "POST",
+							body: JSON.stringify({
+								vaultId,
+								force: false
+							})
+						});
+						notifyStudio({ kind: "watch-rebuild" });
+						return;
+					}
+					if (kind === "default" && vaultId) {
+						const next = await ksApi("/knowledge-studio/config", {
+							method: "POST",
+							body: JSON.stringify({ action: "default", id: vaultId })
+						});
+						publishVaults(next);
+						notifyStudio({ kind: "ok", text: `已把「${vault?.name || name}」设为默认` });
+					}
+				};
+				work().catch((reason) => {
+					notifyStudio({ kind: "error", text: reason instanceof Error ? reason.message : String(reason) });
+				});
+			};
 			const panelActive = usePanelInfo((info) => info.activePanelId !== null);
-			const list = useSessions((s) => s);
 			const pendingInteractions = useSessionPendingInteraction((s) => s);
 			const current = panelActive ? void 0 : list.current;
 			const revealGroup = revealSessionId === void 0 || !workspaceReady ? void 0 : owningGroupKey(workspaces, revealSessionId);
@@ -2031,17 +2589,21 @@ window.__ModuleLoader__.load({
 				});
 			}, [sessionOrderByAccount, workspaces]);
 			const orderedUngroupedSessionIds = (0, react.useMemo)(() => reconciledSessionOrder(ungroupedSessionIds, sessionOrderByAccount[""]), [sessionOrderByAccount, ungroupedSessionIds]);
+			const catalog = resolveVaultCatalog(vaults, allWorkspaces);
+			const page = effectiveKnowledgePage(knowledgePage);
 			const groups = (0, react.useMemo)(() => deriveGroups(list, orderedWorkspaces, archivedSessionIds, pendingInteractions, {
 				expandedGroups,
 				...sessionOrderByAccount[""] === void 0 ? {} : { ungroupedOrder: sessionOrderByAccount[""] }
-			}, pinnedIds), [
+			}, pinnedIds, page ? catalog : undefined), [
 				list,
 				orderedWorkspaces,
 				archivedSessionIds,
 				pendingInteractions,
 				expandedGroups,
 				pinnedIds,
-				sessionOrderByAccount
+				sessionOrderByAccount,
+				page,
+				catalog
 			]);
 			(0, react.useEffect)(() => {
 				if (revealGroup === void 0 || groupExpansion[revealGroup] === true) return;
@@ -2187,7 +2749,10 @@ window.__ModuleLoader__.load({
 								},
 								children: [
 									(0, react_jsx_runtime.jsx)(ProjectRowItem, {
-										group,
+										group: vaultForPath(vaults, group.cwd) ? {
+											...group,
+											label: vaultForPath(vaults, group.cwd).name
+										} : group,
 										home,
 										t,
 										onToggle: group.pinned === true ? () => {} : () => {
@@ -2201,15 +2766,37 @@ window.__ModuleLoader__.load({
 											}
 										},
 										drag: workspaceDragProps,
-										actions: group.workspaceId === void 0 ? void 0 : {
+										actions: group.cwd === void 0 || !page && group.workspaceId === void 0 ? void 0 : {
+											...page ? {
+												settings: () => {
+													runVaultAction(group, "settings");
+												},
+												ingest: () => {
+													runVaultAction(group, "ingest");
+												},
+												rebuild: () => {
+													runVaultAction(group, "rebuild");
+												},
+												...vaultForPath(vaults, group.cwd)?.isDefault ? {} : {
+													setDefault: () => {
+														runVaultAction(group, "default");
+													}
+												}
+											} : {},
 											rename: () => {
 												/* v8 ignore next -- narrowing guard: the actions object exists only for real-workspace groups. */
-												if (group.workspaceId !== void 0) onRenameRequest(group.workspaceId, group.label);
+												if (group.workspaceId !== void 0) onRenameRequest(group.workspaceId, vaultForPath(vaults, group.cwd)?.name || group.label);
 											},
-											delete: () => {
-												/* v8 ignore next -- narrowing guard: the actions object exists only for real-workspace groups. */
-												if (group.workspaceId !== void 0) onDeleteRequest(group.workspaceId, group.label);
-											}
+											...(() => {
+												const vault = vaultForPath(vaults, group.cwd);
+												const allowVaultDelete = !page || Boolean(vault && !vault.isRepo && vaults.length > 1);
+												if (!allowVaultDelete) return {};
+												return {
+													delete: () => {
+														onDeleteRequest(group.workspaceId, vault?.name || group.label, vault?.id);
+													}
+												};
+											})()
 										}
 									}),
 									(sessionsExpanded ? group.sessions : collapsed.rows).map((node) => {
@@ -2282,9 +2869,17 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** The flat "In one list" body: every session is one draggable top-level row. */
-		function FlatList({ useSessions, useSessionPendingInteraction, open, forkSession, onSessionRename, onSessionArchive, archivedSessionIds, usePanelInfo, orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, revealSessionId, onSessionRevealed, t }) {
+		function FlatList({ useSessions, useSessionPendingInteraction, open, forkSession, onSessionRename, onSessionArchive, archivedSessionIds, usePanelInfo, orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, revealSessionId, onSessionRevealed, t, workspaces }) {
+			const knowledgePage = useKnowledgePage();
+			const vaults = useKnowledgeVaults();
 			const panelActive = usePanelInfo((info) => info.activePanelId !== null);
-			const list = useSessions((s) => s);
+			const rawList = useSessions((s) => s);
+			const list = (0, react.useMemo)(() => filterSessionListForPage(rawList, workspaces || [], vaults, knowledgePage), [
+				rawList,
+				workspaces,
+				vaults,
+				knowledgePage
+			]);
 			const pendingInteractions = useSessionPendingInteraction((s) => s);
 			const baseRows = (0, react.useMemo)(() => deriveFlat(list, archivedSessionIds, pendingInteractions), [
 				list,
@@ -2410,8 +3005,21 @@ window.__ModuleLoader__.load({
 		}
 		/** Flat search body: local metadata matches plus the current Host result page. */
 		function SearchResults({ useSessions, useSessionPendingInteraction, open, workspaces, archivedSessionIds, query, remote, resultLimit, usePanelInfo, t }) {
+			const knowledgePage = useKnowledgePage();
+			const vaults = useKnowledgeVaults();
 			const panelActive = usePanelInfo((info) => info.activePanelId !== null);
-			const list = useSessions((s) => s);
+			const rawList = useSessions((s) => s);
+			const list = (0, react.useMemo)(() => filterSessionListForPage(rawList, workspaces, vaults, knowledgePage), [
+				rawList,
+				workspaces,
+				vaults,
+				knowledgePage
+			]);
+			const pageWorkspaces = (0, react.useMemo)(() => filterWorkspacesForPage(workspaces, vaults, knowledgePage), [
+				workspaces,
+				vaults,
+				knowledgePage
+			]);
 			const pendingInteractions = useSessionPendingInteraction((s) => s);
 			const currentRemote = remote.query === query ? remote : {
 				query,
@@ -2419,9 +3027,9 @@ window.__ModuleLoader__.load({
 				items: [],
 				hasMore: false
 			};
-			const results = (0, react.useMemo)(() => deriveSearchResults(list, workspaces, query, archivedSessionIds, pendingInteractions, currentRemote, resultLimit), [
+			const results = (0, react.useMemo)(() => deriveSearchResults(list, pageWorkspaces, query, archivedSessionIds, pendingInteractions, currentRemote, resultLimit), [
 				list,
-				workspaces,
+				pageWorkspaces,
 				query,
 				archivedSessionIds,
 				pendingInteractions,
@@ -2474,11 +3082,73 @@ window.__ModuleLoader__.load({
 		* @returns the region element tree.
 		*/
 		function WorkspaceBrowser({ wide, usePanelInfo, expandSidebar, useSessions, useSessionPendingInteraction, useWorkspaces, useStore, actions, startSession, open, renameSession, forkSession, renameWorkspace, deleteWorkspace, insertWorkspaceBefore, archiveSession, insertSessionBefore, createWorkspace, searchSessions, searchResultLimit, useDirectoryFlow, useHostInfo, renderSlot, t }) {
+			const knowledgePage = useKnowledgePage();
+			const vaults = useKnowledgeVaults();
+			const currentSessionId = useSessions((state) => state.current);
+			const sessionById = useSessions((state) => state.byId);
 			const home = useHostInfo((info) => info.home);
 			const workspaces = useWorkspaces((state) => state.items);
 			const workspacePhase = useWorkspaces((state) => state.phase);
 			const workspaceStreamState = useWorkspaces((state) => state.state);
 			const archivedSessionIds = useWorkspaces((state) => state.archivedSessionIds);
+			const lastRegularSession = (0, react.useRef)(null);
+			const lastKnowledgeSession = (0, react.useRef)(null);
+			const catalog = resolveVaultCatalog(vaults, workspaces);
+			const page = effectiveKnowledgePage(knowledgePage);
+			const regularWorkspaces = partitionWorkspaces(workspaces, catalog).regularRows;
+			(0, react.useEffect)(() => {
+				document.documentElement.dataset.ksRegular = regularWorkspaces.length ? "1" : "0";
+			}, [regularWorkspaces.length]);
+			(0, react.useEffect)(() => {
+				if (catalog.length === 0 || workspacePhase !== "ready") return;
+				const current = currentSessionId === void 0 ? void 0 : sessionById[currentSessionId];
+				const nextCwd = current?.cwd || "";
+				const nextSessionId = currentSessionId || "";
+				const changed = window.__KS_SESSION_CWD__ !== nextCwd || window.__KS_SESSION_ID__ !== nextSessionId;
+				window.__KS_SESSION_CWD__ = nextCwd;
+				window.__KS_SESSION_ID__ = nextSessionId;
+				if (changed) window.dispatchEvent(new CustomEvent("ks-session", { detail: { sessionId: nextSessionId } }));
+				if (!isHarnessApp()) return;
+				const currentIsVault = sessionIsVault(current, workspaces, catalog);
+				if (currentIsVault) lastKnowledgeSession.current = currentSessionId;
+				else if (currentSessionId) lastRegularSession.current = currentSessionId;
+				if (page && !currentIsVault) {
+					const remembered = lastKnowledgeSession.current;
+					if (remembered && sessionById[remembered] && sessionIsVault(sessionById[remembered], workspaces, catalog)) {
+						open(remembered);
+						return;
+					}
+					const vaultWorkspace = filterWorkspacesForPage(workspaces, catalog, true)[0];
+					if (vaultWorkspace) {
+						const sid = vaultWorkspace.sessionIds.find((id) => sessionById[id] && !archivedSessionIds.includes(id));
+						if (sid) open(sid);
+						else startSession(vaultWorkspace.workspaceId);
+					}
+				} else if (!page && currentIsVault) {
+					const remembered = lastRegularSession.current;
+					if (remembered && sessionById[remembered] && !sessionIsVault(sessionById[remembered], workspaces, catalog) && !archivedSessionIds.includes(remembered)) {
+						open(remembered);
+						return;
+					}
+					const regularWorkspace = pageWorkspaces(workspaces, catalog, false)[0];
+					if (regularWorkspace) {
+						const sid = regularWorkspace.sessionIds.find((id) => sessionById[id] && !archivedSessionIds.includes(id));
+						if (sid) open(sid);
+						else startSession(regularWorkspace.workspaceId);
+					}
+				}
+			}, [
+				page,
+				catalog,
+				vaults,
+				workspaces,
+				workspacePhase,
+				currentSessionId,
+				sessionById,
+				archivedSessionIds,
+				open,
+				startSession
+			]);
 			const directoryFlowAvailable = useDirectoryFlow((occupied) => occupied);
 			const groupBy = useStore((s) => s.groupBy);
 			const orderBy = useStore((s) => s.orderBy);
@@ -2711,8 +3381,10 @@ window.__ModuleLoader__.load({
 				setDeleting(true);
 				setDeleteCommittedId(null);
 				setDeleteError(null);
-				deleteWorkspace(deleteTarget.workspaceId).then(() => {
-					setDeleteCommittedId(deleteTarget.workspaceId);
+				deleteWorkspace(deleteTarget.workspaceId, deleteTarget.vaultId).then(() => {
+					setDeleting(false);
+					setDeleteCommittedId(null);
+					setDeleteTarget(null);
 				}).catch((reason) => {
 					setDeleting(false);
 					setDeleteError(reason instanceof Error ? reason.message : String(reason));
@@ -2720,13 +3392,14 @@ window.__ModuleLoader__.load({
 			};
 			return (0, react_jsx_runtime.jsxs)("div", {
 				className: clsx(WorkspaceBrowser_module_css_default.root, !wide && WorkspaceBrowser_module_css_default.rail),
+				"data-knowledge-page": page ? "1" : undefined,
 				children: [
 					(0, react_jsx_runtime.jsxs)("div", {
 						className: WorkspaceBrowser_module_css_default.sectionHeader,
 						children: [
 							wide && (0, react_jsx_runtime.jsx)("span", {
 								className: clsx(WorkspaceBrowser_module_css_default.sectionLabel, WorkspaceBrowser_module_css_default.wide, searchExpanded && WorkspaceBrowser_module_css_default.sectionLabelHidden),
-								children: groupBy === "flat" ? t("section.sessions") : t("section.workspaces")
+								children: groupBy === "flat" ? t("section.sessions") : page ? t("kb.section") : t("section.workspaces")
 							}),
 							wide && (0, react_jsx_runtime.jsx)("div", {
 								className: clsx(WorkspaceBrowser_module_css_default.searchSlot, searchExpanded && WorkspaceBrowser_module_css_default.searchSlotExpanded),
@@ -2800,22 +3473,34 @@ window.__ModuleLoader__.load({
 									},
 									t
 								}), directoryFlowAvailable && (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-									label: t("workspace.add"),
+									label: page ? t("kb.addHint") : t("workspace.add"),
 									side: "bottom",
 									delayMs: 500,
 									children: (0, react_jsx_runtime.jsx)("button", {
 										ref: wsPlusRef,
 										type: "button",
 										className: WorkspaceBrowser_module_css_default.iconButton,
-										"aria-label": t("workspace.add"),
+										"aria-label": page ? t("kb.addHint") : t("workspace.add"),
 										onClick: () => {
+											if (page) {
+												createWorkspace({ pickMaterials: true }).then((workspace) => {
+													if (workspace?.workspaceId) startSession(workspace.workspaceId);
+												}).catch((reason) => {
+													const text = reason instanceof Error ? reason.message : String(reason);
+													notifyStudio({
+														kind: text === "已取消" ? "ok" : "error",
+														text
+													});
+												});
+												return;
+											}
 											setWsPickerOpen((v) => !v);
 										},
 										children: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconProjectAddOutline16, { size: wide ? 16 : 18 })
 									})
 								})]
 							}),
-							(0, react_jsx_runtime.jsx)(WorkspacePickFlow, {
+							!page && (0, react_jsx_runtime.jsx)(WorkspacePickFlow, {
 								t,
 								open: wsPickerOpen,
 								anchorRef: wsPlusRef,
@@ -2869,6 +3554,7 @@ window.__ModuleLoader__.load({
 							usePanelInfo,
 							useSessions,
 							useSessionPendingInteraction,
+							workspaces,
 							open,
 							forkSession,
 							onSessionRename,
@@ -2915,10 +3601,11 @@ window.__ModuleLoader__.load({
 								setRenameDraft(currentTitle);
 								setRenameError(null);
 							},
-							onDeleteRequest: (workspaceId, title) => {
+							onDeleteRequest: (workspaceId, title, vaultId) => {
 								setDeleteTarget({
 									workspaceId,
-									title
+									title,
+									vaultId
 								});
 								setDeleteError(null);
 							}
@@ -3030,8 +3717,8 @@ window.__ModuleLoader__.load({
 						open: deleteTarget !== null,
 						onClose: closeDelete,
 						closeLabel: t("close"),
-						title: t("delete.workspace"),
-						...deleteTarget === null ? {} : { description: t("delete.desc", { name: deleteTarget.title }) },
+						title: page ? t("kb.delete") : t("delete.workspace"),
+						...deleteTarget === null ? {} : { description: t(page ? "kb.delete.desc" : "delete.desc", { name: deleteTarget.title }) },
 						footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 							variant: "outline",
 							disabled: deleting,
@@ -3042,12 +3729,12 @@ window.__ModuleLoader__.load({
 							className: WorkspaceBrowser_module_css_default.deleteAction,
 							disabled: deleting,
 							onClick: confirmDelete,
-							children: t("delete.workspace")
+							children: page ? t("kb.delete") : t("delete.workspace")
 						})] }),
 						children: [deleting && (0, react_jsx_runtime.jsx)("div", {
 							className: WorkspaceBrowser_module_css_default.deleteStatus,
 							role: "status",
-							children: t("delete.pending")
+							children: page ? t("kb.delete.pending") : t("delete.pending")
 						}), deleteError !== null && (0, react_jsx_runtime.jsx)("div", {
 							className: WorkspaceBrowser_module_css_default.renameError,
 							role: "alert",
@@ -3103,6 +3790,16 @@ window.__ModuleLoader__.load({
 			"delete.workspace": "删除工作区",
 			"delete.desc": "将把“{name}”从工作区列表中移除。文件夹与会话记录会保留，其会话将显示在“未分组”下。",
 			"delete.pending": "正在删除工作区…",
+			"kb.section": "知识库",
+			"kb.add": "添加知识库",
+			"kb.addHint": "选择资料文件或文件夹，应用会新建库路径",
+			"kb.settings": "设置",
+			"kb.ingest": "添加资料",
+			"kb.rebuild": "更新索引",
+			"kb.default": "设为默认",
+			"kb.delete": "删除知识库",
+			"kb.delete.desc": "将删除「{name}」的库文件夹和索引。你选的原始资料不会动。",
+			"kb.delete.pending": "正在删除知识库…",
 			"menu.fork": "分叉会话",
 			"menu.archiveSession": "归档会话",
 			"sessions.count.one": "{n} 个会话",
@@ -3169,6 +3866,16 @@ window.__ModuleLoader__.load({
 			"delete.workspace": "Delete workspace",
 			"delete.desc": "This removes “{name}” from the workspace list. The folder and session logs will be kept. Its sessions will appear under Ungrouped.",
 			"delete.pending": "Deleting workspace…",
+			"kb.section": "Knowledge",
+			"kb.add": "Add knowledge base",
+			"kb.addHint": "Pick files or folders; the app creates the library path",
+			"kb.settings": "Settings",
+			"kb.ingest": "Add files",
+			"kb.rebuild": "Update index",
+			"kb.default": "Set as default",
+			"kb.delete": "Delete knowledge base",
+			"kb.delete.desc": "This deletes the “{name}” library folder and index. Your original materials are not touched.",
+			"kb.delete.pending": "Deleting knowledge base…",
 			"menu.fork": "Fork session",
 			"menu.archiveSession": "Archive session",
 			"sessions.count.one": "{n} session",
@@ -3252,9 +3959,19 @@ window.__ModuleLoader__.load({
 			};
 			const browserInjected = () => ({
 				startSession: (workspaceId) => {
+					if (readKnowledgePage()) {
+						const item = workspaceSnapshotItems(workspaces).find((row) => row.workspaceId === workspaceId);
+						if (item?.path) selectVaultForPath(item.path);
+					}
 					uiWorkspace.startSession(workspaceId);
 				},
-				open: openSession,
+				open: (sessionId) => {
+					if (readKnowledgePage()) {
+						const item = workspaceSnapshotItems(workspaces).find((row) => row.sessionIds.includes(sessionId));
+						if (item?.path) selectVaultForPath(item.path);
+					}
+					openSession(sessionId);
+				},
 				searchSessions,
 				searchResultLimit: sessions.searchResultLimit,
 				renameSession: async (sessionId, title) => {
@@ -3268,9 +3985,61 @@ window.__ModuleLoader__.load({
 				},
 				renameWorkspace: async (workspaceId, title) => {
 					await workspaces.rename(workspaceId, title);
+					const item = workspaceSnapshotItems(workspaces).find((row) => row.workspaceId === workspaceId);
+					if (!item?.path) return;
+					try {
+						const cfg = await ksApi("/knowledge-studio/config");
+						const vault = vaultForPath(cfg.vaults || [], item.path);
+						if (!vault) return;
+						publishVaults(await ksApi("/knowledge-studio/config", {
+							method: "POST",
+							body: JSON.stringify({ action: "rename", id: vault.id, name: title })
+						}));
+					} catch {
+						// vault rename is best-effort; the workspace title already changed
+					}
 				},
-				deleteWorkspace: async (workspaceId) => {
+				deleteWorkspace: async (workspaceId, vaultId) => {
+					const items = workspaceSnapshotItems(workspaces);
+					const item = items.find((row) => row.workspaceId === workspaceId);
+					const known = vaultCache.length ? vaultCache : (await ksApi("/knowledge-studio/config")).vaults || [];
+					const vault = (vaultId && known.find((row) => row.id === vaultId))
+						|| vaultForPath(known, item?.path);
+					if (readKnowledgePage() || vaultId) {
+						if (!vault) throw new Error("找不到这个知识库");
+						if (vault.isRepo) throw new Error("自带知识库不能删除");
+						const previous = vaultCache.slice();
+						const remaining = known.filter((row) => row.id !== vault.id);
+						if (remaining.length === 0) throw new Error("至少保留一个知识库");
+						publishVaults({ vaults: remaining, replace: true });
+						try {
+							const next = await ksApi("/knowledge-studio/config", {
+								method: "POST",
+								body: JSON.stringify({ action: "remove", id: vault.id })
+							});
+							const left = (next.vaults || []).filter((row) => row.id !== vault.id);
+							publishVaults({ vaults: left.length ? left : remaining, replace: true });
+						} catch (error) {
+							publishVaults({ vaults: previous.length ? previous : known, replace: true });
+							throw error;
+						}
+						return;
+					}
+					if (typeof workspaceId !== "string" || workspaceId === "") {
+						throw new Error("找不到这个工作区");
+					}
+					const leftover = items.filter((row) => row.workspaceId !== workspaceId);
 					await workspaces.delete(workspaceId);
+					if (leftover.length === 0) {
+						return;
+					}
+					const next = leftover[0];
+					const live = (next.sessionIds || []).find((id) => {
+						const snapshot = sessions.list.getSnapshot().byId[id];
+						return snapshot && !workspaces.list.getSnapshot().archivedSessionIds.includes(id);
+					});
+					if (live) openSession(live);
+					else uiWorkspace.startSession(next.workspaceId);
 				},
 				insertWorkspaceBefore: async (workspaceId, beforeWorkspaceId) => {
 					await workspaces.insertBefore(workspaceId, beforeWorkspaceId);
@@ -3281,14 +4050,20 @@ window.__ModuleLoader__.load({
 				insertSessionBefore: async (workspaceId, sessionId, beforeSessionId) => {
 					await workspaces.insertSessionBefore(workspaceId, sessionId, beforeSessionId);
 				},
-				createWorkspace: (input) => workspaces.create(input),
+				createWorkspace: async (input) => {
+					if (readKnowledgePage()) return createKnowledgeWorkspace(workspaces, input);
+					return workspaces.create(input);
+				},
 				hooks: {
 					directoryFlow: browserFlowSource,
 					hostInfo
 				}
 			});
 			const pickerInjected = () => ({
-				createWorkspace: (input) => workspaces.create(input),
+				createWorkspace: async (input) => {
+					if (readKnowledgePage()) return createKnowledgeWorkspace(workspaces, input);
+					return workspaces.create(input);
+				},
 				hooks: { directoryFlow: pickerFlowSource }
 			});
 			ctx.slots.inject("sidebar.workspaces", () => ctx.slots.register({

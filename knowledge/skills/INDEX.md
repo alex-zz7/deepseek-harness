@@ -1,6 +1,6 @@
 # Skill 知识库索引
 
-> 自动生成于 2026-09-11 15:47 UTC，共 **252** 个 skill，分 12 组。
+> 自动生成于 2026-09-12 11:04 UTC，共 **252** 个 skill，分 12 组。
 >
 > 重新生成：`./knowledge/scripts/sync-skills.sh`
 

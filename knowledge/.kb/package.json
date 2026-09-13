@@ -1,0 +1,13 @@
+{
+  "name": "knowledge-kb-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local RAG over the knowledge/ vault, exposed as an MCP stdio server.",
+  "dependencies": {
+    "@huggingface/transformers": "^3.7.6",
+    "@modelcontextprotocol/sdk": "^1.20.1",
+    "mammoth": "^1.9.0",
+    "pdf-parse": "^1.1.1"
+  }
+}

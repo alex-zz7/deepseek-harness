@@ -37,6 +37,10 @@ swiftc \
 echo "==> Info.plist"
 cp "$HERE/Info.plist" "$APP/Contents/Info.plist"
 
+echo "==> keep-dsh"
+cp "$HERE/keep-dsh.sh" "$APP/Contents/Resources/keep-dsh.sh"
+chmod 755 "$APP/Contents/Resources/keep-dsh.sh"
+
 echo "==> icon"
 ICONSET="$BUILD/AppIcon.iconset"
 LOGO="$HERE/Assets/deepseek-logo.svg"
@@ -72,7 +76,8 @@ IDENTITY="${CODESIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev
 
 if [[ -n "$IDENTITY" ]]; then
   echo "    identity: $IDENTITY"
-  if ! codesign --force --deep --sign "$IDENTITY" "$APP" 2>/dev/null; then
+  if ! codesign --force --deep --sign "$IDENTITY" \
+      --identifier local.deepseek-harness.shell "$APP" 2>/dev/null; then
     echo "    (that identity failed; falling back to ad-hoc)"
     codesign --force --deep --sign - "$APP" 2>/dev/null || true
   fi

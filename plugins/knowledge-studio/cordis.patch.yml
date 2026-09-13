@@ -1,0 +1,5 @@
+# Knowledge studio: host routes. Vaults reuse the left workspace groups.
+
+- insert:
+    - id: knowledge-studio
+      name: 'dsh-knowledge-studio'
