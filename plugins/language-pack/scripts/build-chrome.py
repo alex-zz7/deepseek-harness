@@ -120,6 +120,10 @@ for key, zh_hant, ja, ko, fr, es in [
 # workspace — the sidebar list the user stares at
 W = {
     "group.ungrouped": ("未分組", "未分類", "그룹 없음", "Sans groupe", "Sin grupo"),
+    "clear.ungrouped": ("清空未分組", "未グループを空にする", "미분류 비우기", "Vider Sans groupe", "Vaciar Sin grupo"),
+    "clear.ungrouped.title": ("清空未分組", "未グループを空にする", "미분류 비우기", "Vider Sans groupe", "Vaciar Sin grupo"),
+    "clear.ungrouped.desc": ("會封存「未分組」裡的 {n} 個會話，這個分組會隨之清空並消失。會話紀錄與資料夾都會保留。", "「未グループ」の {n} 件のセッションをアーカイブします。グループは空になり消えます。記録とフォルダは残ります。", "「미분류」의 세션 {n}개를 보관 처리합니다. 그룹은 비고 사라집니다. 기록과 폴더는 유지됩니다.", "Archive les {n} sessions de Sans groupe ; le groupe se vide et disparaît. Les journaux et dossiers sont conservés.", "Archiva las {n} sesiones de Sin grupo; el grupo se vacía y desaparece. Los registros y las carpetas se conservan."),
+    "clear.ungrouped.pending": ("正在封存會話…", "セッションをアーカイブ中…", "세션 보관 처리 중…", "Archivage des sessions…", "Archivando sesiones…"),
     "session.new": ("新會話", "新しいセッション", "새 세션", "Nouvelle session", "Nueva sesión"),
     "section.workspaces": ("工作區", "ワークスペース", "작업 공간", "Espaces de travail", "Espacios de trabajo"),
     "section.sessions": ("會話", "セッション", "세션", "Sessions", "Sesiones"),
@@ -171,6 +175,7 @@ W = {
     "sessions.count.one": ("{n} 個會話", "{n} 件のセッション", "세션 {n}개", "{n} session", "{n} sesión"),
     "sessions.count.other": ("{n} 個會話", "{n} 件のセッション", "세션 {n}개", "{n} sessions", "{n} sesiones"),
     "actions.workspace.aria": ("工作區「{name}」的操作", "ワークスペース「{name}」の操作", "작업 공간 「{name}」 작업", "Actions de l’espace {name}", "Acciones del espacio {name}"),
+    "actions.ungrouped.aria": ("「未分組」的操作", "「未グループ」の操作", "「미분류」 작업", "Actions de Sans groupe", "Acciones de Sin grupo"),
     "actions.session.aria": ("會話「{name}」的操作", "セッション「{name}」の操作", "세션 「{name}」 작업", "Actions de la session {name}", "Acciones de la sesión {name}"),
     "actions.newSession.aria": ("在「{name}」中新增會話", "「{name}」で新しいセッション", "「{name}」에서 새 세션", "Nouvelle session dans {name}", "Nueva sesión en {name}"),
     "status.running": ("進行中", "実行中", "실행 중", "En cours", "En curso"),

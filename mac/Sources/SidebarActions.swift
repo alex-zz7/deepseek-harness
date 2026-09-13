@@ -67,7 +67,17 @@ let sidebarActionsScript = #"""
     /* Cursor-style dictation: a full-width pill *inside* the composer card.
        × throws the transcript away, the bars show the live level. While
        listening the composer's primary button becomes 完成 rather than 发送. */
-    button[class*="primary"][data-dsh-complete="1"] { color: #fff; }
+    button[class*="primary"][data-dsh-complete="1"] { color: #fff; position: relative; }
+    /* Hide the product's icon by CSS, never by removing it: the SVG belongs to
+       React, and detaching it makes the next commit throw removeChild. */
+    button[class*="primary"][data-dsh-complete="1"] > svg { visibility: hidden; }
+    .dsh-complete-badge {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
     [data-composer-card].dsh-voice-active { position: relative; }
     [data-composer-card].dsh-voice-active [class*="scroll"] { padding-top: 52px; }
     .dsh-voice {
@@ -572,23 +582,36 @@ let sidebarActionsScript = #"""
     return document.querySelector('[class*="trailing"] button[class*="primary"]');
   }
 
-  let sendOriginalHTML = null;
-
+  /**
+   * While dictating the primary button reads 完成 rather than 发送.
+   *
+   * The button belongs to React, so its children must not be replaced: doing
+   * that (as this used to, via `replaceChildren` / `innerHTML`) leaves React's
+   * fiber tree pointing at detached nodes, and the next commit that touches
+   * them — the send/stop swap when a turn starts is one — throws
+   * `NotFoundError: removeChild`. That commit-phase crash retires the
+   * composer's slot entry permanently, so the whole input box disappears and
+   * only a page reload brings it back. Overlay a glyph we own instead, and let
+   * CSS hide the product's own icon for as long as the badge is up.
+   */
   function markSendAsComplete(send) {
     if (send.dataset.dshComplete === '1') return;
-    sendOriginalHTML = send.innerHTML;
     send.dataset.dshComplete = '1';
     send.title = '完成听写';
     send.setAttribute('aria-label', '完成听写');
-    send.replaceChildren(icon(VOICE_CHECK_PATH, false));
+    const badge = document.createElement('span');
+    badge.className = 'dsh-complete-badge';
+    badge.appendChild(icon(VOICE_CHECK_PATH, false));
+    send.appendChild(badge);
   }
 
   function restoreSend(send) {
     if (send.dataset.dshComplete !== '1') return;
     send.dataset.dshComplete = '0';
-    if (sendOriginalHTML !== null) send.innerHTML = sendOriginalHTML;
     send.title = '发送消息';
     send.setAttribute('aria-label', '发送消息');
+    // Remove only our own node; React's children were never touched.
+    send.querySelector('.dsh-complete-badge')?.remove();
   }
 
   function syncSendButton() {

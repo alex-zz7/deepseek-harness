@@ -115,6 +115,11 @@ export type WorkspaceBrowserInjected = {
     renameSession: (sessionId: SessionId, title: string) => Promise<void>;
     /** Fork a Session at its last completed turn and open the child. */
     forkSession: (sessionId: SessionId) => void;
+    /**
+     * Stop the Session's in-flight turn, resolving once the list projection
+     * reports it idle again. Backs the archive dialog's stop-then-archive path.
+     */
+    stopSession: (sessionId: SessionId) => Promise<void>;
     /** Rename a Host Workspace (rejects on name conflict; resolves on durability). */
     renameWorkspace: (workspaceId: WorkspaceId, title: string) => Promise<void>;
     /** Delete only a Host Workspace registration; directory and Session logs remain. */

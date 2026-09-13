@@ -40,10 +40,13 @@ export declare function ProjectRowItem({ group, onToggle, onCreate, actions, dra
     group: GroupNode;
     onToggle: () => void;
     onCreate: () => void;
-    /** Real-Workspace actions; absent for the ungrouped bucket (no menu shown). */
+    /** Workspace actions, or the Ungrouped bucket's single `clear`; absent when the row shows no menu. */
     actions?: {
         rename: () => void;
         delete: () => void;
+    } | {
+        /** Archive every chat the Ungrouped bucket lists. */
+        clear: () => void;
     } | undefined;
     /** Present only for real Workspace rows in the grouped view. */
     drag?: WorkspaceRowDragProps | undefined;
@@ -76,7 +79,8 @@ export declare function SearchResultItem({ result, currentId, onOpen, t }: {
  * @param props.onOpen - open a session by id.
  * @param props.onRename - open the session rename dialog (id + current title).
  * @param props.onFork - fork a session at its last completed turn.
- * @param props.onArchive - archive a session by id.
+ * @param props.onArchive - open the archive confirmation for a session node (the
+ * node carries the activity the dialog has to warn about).
  * @param props.onReveal - scroll this row into view after search navigation, then acknowledge it.
  * @param props.drag - optional draggable-row wiring.
  * @param props.flat - omit the empty status slot in the hierarchy-free flat list.
@@ -92,8 +96,8 @@ export declare function SessionNodeItem({ node, currentId, now, onOpen, onRename
     onRename: (id: SessionNode['id'], currentTitle: string) => void;
     /** Fork a session at its last completed turn (row menu action). */
     onFork: (id: SessionNode['id']) => void;
-    /** Archive this session (row menu action; commits without a dialog). */
-    onArchive: (id: SessionNode['id']) => void;
+    /** Open the browser-owned archive confirmation (row menu action). */
+    onArchive: (node: SessionNode) => void;
     /** Scroll this row into view after search navigation, then acknowledge it. */
     onReveal?: (() => void) | undefined;
     /** Present only on draggable rows (workspace-group sessions outside search). */

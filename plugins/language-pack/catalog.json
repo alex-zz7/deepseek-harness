@@ -2342,6 +2342,10 @@
   "workspace": {
     "zh": {
       "group.ungrouped": "未分组",
+      "clear.ungrouped": "清空未分组",
+      "clear.ungrouped.title": "清空未分组",
+      "clear.ungrouped.desc": "将归档“未分组”里的 {n} 个会话，这个分组随之为空并消失。会话记录与文件夹都保留。",
+      "clear.ungrouped.pending": "正在归档会话…",
       "session.new": "新会话",
       "section.workspaces": "工作区",
       "section.sessions": "会话",
@@ -2393,6 +2397,7 @@
       "sessions.count.one": "{n} 个会话",
       "sessions.count.other": "{n} 个会话",
       "actions.workspace.aria": "工作区“{name}”的操作",
+      "actions.ungrouped.aria": "“未分组”的操作",
       "actions.session.aria": "会话“{name}”的操作",
       "actions.newSession.aria": "在“{name}”中新建会话",
       "status.running": "进行中",
@@ -2417,6 +2422,10 @@
     },
     "en": {
       "group.ungrouped": "Ungrouped",
+      "clear.ungrouped": "Clear Ungrouped",
+      "clear.ungrouped.title": "Clear Ungrouped",
+      "clear.ungrouped.desc": "This archives the {n} sessions under Ungrouped, so the group empties and disappears. Session logs and folders are kept.",
+      "clear.ungrouped.pending": "Archiving sessions…",
       "session.new": "New Session",
       "section.workspaces": "Workspaces",
       "section.sessions": "Sessions",
@@ -2468,6 +2477,7 @@
       "sessions.count.one": "{n} session",
       "sessions.count.other": "{n} sessions",
       "actions.workspace.aria": "Workspace actions for {name}",
+      "actions.ungrouped.aria": "Ungrouped actions",
       "actions.session.aria": "Session actions for {name}",
       "actions.newSession.aria": "New session in {name}",
       "status.running": "Running",
