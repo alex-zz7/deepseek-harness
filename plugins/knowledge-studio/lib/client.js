@@ -1606,7 +1606,7 @@ window.__ModuleLoader__.load({
 
     const zh = { trigger: '知识库' };
     const en = { trigger: 'Knowledge' };
-    const inject = ['slots', 'layout', 'locale', 'sidebarRight', 'settings'];
+    const inject = ['slots', 'layout', 'locale', 'sidebarRight'];
 
     function apply(ctx) {
       window.__ksOpenInSidebar = (address) => {
