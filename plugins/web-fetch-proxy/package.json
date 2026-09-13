@@ -1,0 +1,18 @@
+{
+  "name": "dsh-web-fetch-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remap fake-IP WEB_BLOCKED_URL failures and optionally detect a local HTTP proxy.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./fake-ip": "./lib/fake-ip.js",
+    "./detect": "./lib/detect.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

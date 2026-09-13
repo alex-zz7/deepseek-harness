@@ -28,6 +28,7 @@ const PLUGINS = [
   'plugins/sidebar-editor',
   'plugins/global-skills',
   'plugins/knowledge-studio',
+  'plugins/web-fetch-proxy',
 ];
 
 function resolveDsh() {

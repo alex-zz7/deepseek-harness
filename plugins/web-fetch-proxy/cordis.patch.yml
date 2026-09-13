@@ -1,0 +1,7 @@
+# Host-only: wraps ctx.web.fetch so TUN/fake-IP DNS gets a machine-routable
+# error instead of a generic WEB_BLOCKED_URL. Does not register a second
+# fetch provider (that would throw WEB_PROVIDER_AMBIGUOUS).
+
+- insert:
+    - id: web-fetch-proxy
+      name: dsh-web-fetch-proxy
