@@ -115,31 +115,32 @@ export function buildEvents(conversation, id) {
   let turn = 0;
   let step = 0;
   let pending = null;
+  let opened = false;
+  let turnStartSeq = 0;
 
-  const openTurn = () => {
+  const openTurn = (time) => {
     turn += 1;
     step = 0;
     pending = null;
-    push('turn/start', timeAt(0, conversation.messages[0] ?? {}), { turn });
+    opened = true;
+    turnStartSeq = events.length;
+    push('turn/start', time, { turn });
   };
   const closeTurn = (time) => {
+    if (!opened) return;
     if (pending !== null) {
       push('step/end', time, { turn, step });
       pending = null;
     }
-    if (turn > 0) push('turn/end', time, { turn, reason: 'completed' });
-    turn = 0;
+    push('turn/end', time, { turn, reason: 'completed' });
+    opened = false;
   };
 
   for (const [index, message] of conversation.messages.entries()) {
     const time = timeAt(index, message);
-    if (turn === 0) openTurn();
     if (message.role === 'user') {
-      if (step > 0) {
-        push('step/end', time, { turn, step });
-        pending = null;
-        step = 0;
-      }
+      if (opened) closeTurn(time);
+      openTurn(time);
       push(
         'user/message',
         time,
@@ -149,10 +150,11 @@ export function buildEvents(conversation, id) {
           id: messageIdFor(conversation.source, conversation.id, index),
           source: { kind: 'user', clientTimeZone: conversation.meta.clientTimeZone ?? undefined },
         },
-        { surfaceOp: 'append' },
+        { surfaceOp: 'append', sourceEventSeqs: [turnStartSeq] },
       );
       continue;
     }
+    if (!opened) openTurn(time);
     step += 1;
     push('step/start', time, { turn, step });
     push(

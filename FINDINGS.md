@@ -278,3 +278,9 @@ equals the folder is dropped. Codex has no title field and its first user-role
 item is usually an `AGENTS.md` dump or a multi-hundred-kilobyte
 `<recommended_plugins>` catalog — skip those lines and use the first real
 prompt. Empty realtime / scaffolding-only files are not listed.
+
+Cursor's sidebar is not just `composerHeaders`. This machine had 58 named
+SQLite chats and 301 unique `agent-transcripts` ids; 109 of those ids are
+not in the SQLite index at all. Import must merge both stores or the sidebar
+only shows a slice. Hydrating each imported session with a 1.5s wait also
+timed out large runs, so only the first batch appeared live.

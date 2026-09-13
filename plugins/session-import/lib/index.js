@@ -380,17 +380,28 @@ async function hydrateImportedSessions(ctx, sessionIds) {
       .filter((entry) => typeof entry?.sessionId === 'string' && typeof entry?.artifact === 'string')
       .map((entry) => [entry.sessionId, entry]),
   );
-  for (const sessionId of sessionIds) {
-    const entry = byId.get(sessionId);
-    if (entry === undefined) continue;
-    try {
-      const verified = await verifyArtifact(entry.artifact);
-      cache.coldSnapshot(verified.header, 0, verified.events);
-      await waitForCachedTitle(cache, verified.header, 1500);
-    } catch {
-      // Title appears the next time the user opens the session.
+  const unique = [...new Set(sessionIds)].filter((id) => byId.has(id));
+  let lastHeader;
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < unique.length) {
+      const sessionId = unique[cursor];
+      cursor += 1;
+      const entry = byId.get(sessionId);
+      if (entry === undefined) continue;
+      try {
+        const verified = await verifyArtifact(entry.artifact);
+        const cached = typeof cache.cachedSnapshot === 'function' ? cache.cachedSnapshot(verified.header, 0) : undefined;
+        if (typeof cached?.values?.title === 'string' && cached.values.title.length > 0) continue;
+        cache.coldSnapshot(verified.header, 0, verified.events);
+        lastHeader = verified.header;
+      } catch {
+        // Title appears the next time the user opens the session.
+      }
     }
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(8, Math.max(1, unique.length)) }, () => worker()));
+  if (lastHeader !== undefined) await waitForCachedTitle(cache, lastHeader, 400);
 }
 
 /** Wait until the cache has a title row, or the timeout elapses. */

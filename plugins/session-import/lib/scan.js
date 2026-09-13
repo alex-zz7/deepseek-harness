@@ -253,9 +253,9 @@ export function scanCodex(options = {}) {
 }
 
 /**
- * Cursor's IDE chats live in one SQLite key-value store, not in files. The
- * scan reads only `composerHeaders` (361 rows on the machine this was built
- * against) and leaves the millions of `bubbleId:` rows to the parser.
+ * Cursor's IDE chats live in SQLite `composerHeaders` plus per-workspace
+ * `agent-transcripts` JSONL. The scan reads the headers and the transcript
+ * index, and leaves the millions of `bubbleId:` rows to the parser.
  *
  * The database is opened read-only and never written. Cursor may be running:
  * SQLite readers do not block the IDE's writes, and rows written while the scan
@@ -267,42 +267,51 @@ export function scanCursor(options = {}) {
   const path =
     options.cursorDb ??
     join(homeDir(), 'Library', 'Application Support', 'Cursor', 'User', 'globalStorage', 'state.vscdb');
-  if (!existsSync(path)) return [];
-  const db = openCursorDb(path);
-  try {
-    const rows = db.prepare('SELECT composerId, createdAt, lastUpdatedAt, isArchived, isSubagent, value FROM composerHeaders').all();
-    const refs = [];
-    for (const row of rows) {
-      if (row.isArchived === 1 || row.isSubagent === 1) continue;
-      let header = {};
-      try {
-        header = JSON.parse(row.value);
-      } catch {
-        header = {};
+  const byId = new Map();
+  if (existsSync(path)) {
+    const db = openCursorDb(path);
+    try {
+      const rows = db.prepare('SELECT composerId, createdAt, lastUpdatedAt, isArchived, isSubagent, value FROM composerHeaders').all();
+      for (const row of rows) {
+        if (row.isSubagent === 1) continue;
+        let header = {};
+        try {
+          header = JSON.parse(row.value);
+        } catch {
+          header = {};
+        }
+        if (header.isDraft === true) continue;
+        const cwd = header?.workspaceIdentifier?.uri?.fsPath || header?.workspaceIdentifier?.uri?.path;
+        const named = usableTitle(typeof header.name === 'string' ? header.name : '', cwd);
+        const hasBubbles = composerHasBubbles(db, row.composerId);
+        if (named.length === 0 && !hasBubbles) continue;
+        byId.set(
+          row.composerId,
+          sessionRef('cursor', row.composerId, {
+            title: named,
+            cwd: typeof cwd === 'string' && cwd.startsWith('/') ? cwd.replace(/\/+$/, '') : undefined,
+            createdAt: Number(row.createdAt) || 0,
+            updatedAt: Number(row.lastUpdatedAt) || Number(row.createdAt) || 0,
+            locator: { path, composerId: row.composerId },
+            meta: {
+              subtitle: typeof header.subtitle === 'string' ? header.subtitle : '',
+              unifiedMode: typeof header.unifiedMode === 'string' ? header.unifiedMode : '',
+              archived: row.isArchived === 1,
+              hasBubbles,
+            },
+          }),
+        );
       }
-      if (header.isDraft === true) continue;
-      const cwd = header?.workspaceIdentifier?.uri?.fsPath || header?.workspaceIdentifier?.uri?.path;
-      const named = usableTitle(typeof header.name === 'string' ? header.name : '', cwd);
-      if (named.length === 0 && !composerHasBubbles(db, row.composerId)) continue;
-      refs.push(
-        sessionRef('cursor', row.composerId, {
-          title: named,
-          cwd: typeof cwd === 'string' && cwd.startsWith('/') ? cwd.replace(/\/+$/, '') : undefined,
-          createdAt: Number(row.createdAt) || 0,
-          updatedAt: Number(row.lastUpdatedAt) || Number(row.createdAt) || 0,
-          locator: { path, composerId: row.composerId },
-          meta: {
-            subtitle: typeof header.subtitle === 'string' ? header.subtitle : '',
-            unifiedMode: typeof header.unifiedMode === 'string' ? header.unifiedMode : '',
-          },
-        }),
-      );
+    } finally {
+      db.close();
     }
-    refs.sort((left, right) => right.updatedAt - left.updatedAt);
-    return refs;
-  } finally {
-    db.close();
   }
+  mergeCursorTranscripts(byId, options);
+  const refs = [...byId.values()].filter(
+    (ref) => ref.meta.hasBubbles === true || typeof ref.locator.transcript === 'string' || ref.meta.fromTranscript === true,
+  );
+  refs.sort((left, right) => right.updatedAt - left.updatedAt);
+  return refs;
 }
 
 /**
@@ -394,6 +403,118 @@ function isTinyFile(path) {
   } catch {
     return true;
   }
+}
+
+/**
+ * Fold agent-transcript JSONL files under ~/.cursor/projects into the Cursor index.
+ *
+ * Composer headers only cover chats still in the SQLite store. Older and
+ * some current agent chats live only as JSONL transcripts; skipping that
+ * tree is why an import showed 58 conversations while Cursor listed hundreds.
+ * @param byId - composer id → session ref, mutated in place.
+ * @param options - optional cursorProjects root override.
+ */
+function mergeCursorTranscripts(byId, options = {}) {
+  const root = options.cursorProjects ?? join(homeDir(), '.cursor', 'projects');
+  const files = walkFiles(root, (name) => name.endsWith('.jsonl'));
+  for (const file of files) {
+    if (!file.includes('/agent-transcripts/')) continue;
+    const id = file.slice(0, -'.jsonl'.length).split('/').pop();
+    if (!id || id.startsWith('task-')) continue;
+    const existing = byId.get(id);
+    if (existing !== undefined) {
+      existing.locator.transcript = file;
+      if (existing.title.length === 0) existing.title = firstTranscriptTitle(file, existing.cwd);
+      continue;
+    }
+    const slug = cursorProjectSlug(file, root);
+    const cwd = cwdFromCursorProjectSlug(slug);
+    const title = firstTranscriptTitle(file, cwd);
+    const updatedAt = mtimeMs(file);
+    if (title.length === 0 && !transcriptHasUser(file)) continue;
+    byId.set(
+      id,
+      sessionRef('cursor', id, {
+        title,
+        cwd,
+        createdAt: updatedAt,
+        updatedAt,
+        locator: { composerId: id, transcript: file },
+        meta: { fromTranscript: true },
+      }),
+    );
+  }
+}
+
+/** Project folder slug that owns one transcript path. */
+function cursorProjectSlug(file, root) {
+  const relative = file.startsWith(`${root}/`) ? file.slice(root.length + 1) : file;
+  return relative.split('/')[0] ?? '';
+}
+
+/**
+ * Turn a Cursor project slug back into a workspace path.
+ *
+ * Slugs replace `/` with `-`, so `Users-alex-projects-x-scheduler` has to be
+ * matched against real directories, longest segment first.
+ * @param slug - the project folder name under `~/.cursor/projects`.
+ * @returns an existing absolute path, or undefined.
+ */
+export function cwdFromCursorProjectSlug(slug) {
+  if (typeof slug !== 'string' || slug.length === 0) return undefined;
+  if (/^\d+$/.test(slug) || slug === 'empty-window' || slug.startsWith('var-folders-')) return undefined;
+  const parts = slug.split('-').filter((part) => part.length > 0);
+  if (parts[0] !== 'Users' || parts.length < 2) return undefined;
+  let current = join('/', 'Users', parts[1]);
+  if (!existsSync(current)) return undefined;
+  let index = 2;
+  while (index < parts.length) {
+    let next = '';
+    let consumed = 0;
+    for (let end = parts.length; end > index; end--) {
+      const candidate = join(current, parts.slice(index, end).join('-'));
+      if (existsSync(candidate)) {
+        next = candidate;
+        consumed = end - index;
+        break;
+      }
+    }
+    if (!next) break;
+    current = next;
+    index += consumed;
+  }
+  return current;
+}
+
+/** First human prompt in a Cursor transcript, for the listing title. */
+function firstTranscriptTitle(path, cwd) {
+  let title = '';
+  scanJsonlHead(
+    path,
+    (record) => {
+      if (record.role !== 'user') return;
+      title = promptTitle(plainTextOf(record.message?.content), cwd);
+      return title.length === 0;
+    },
+    { byteLimit: 262144, recordLimit: 40 },
+  );
+  return title;
+}
+
+/** True when a transcript contains at least one user message. */
+function transcriptHasUser(path) {
+  let found = false;
+  scanJsonlHead(
+    path,
+    (record) => {
+      if (record.role === 'user' && plainTextOf(record.message?.content).trim().length > 0) {
+        found = true;
+        return false;
+      }
+    },
+    { byteLimit: 262144, recordLimit: 80 },
+  );
+  return found;
 }
 
 /** True when Cursor stored at least one bubble for this composer. */

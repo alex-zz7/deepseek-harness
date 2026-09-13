@@ -881,7 +881,8 @@ window.__ModuleLoader__.load({
 		*/
 		function deriveGroups(list, workspaces, archivedSessionIds, pendingInteractions, view, pinnedIds, vaults) {
 			const archived = new Set(archivedSessionIds);
-			const expandedGroups = new Set(view.expandedGroups);
+			const groupExpansion = view.groupExpansion && typeof view.groupExpansion === "object" ? view.groupExpansion : {};
+			const groupIsExpanded = (key) => Object.prototype.hasOwnProperty.call(groupExpansion, key) ? groupExpansion[key] === true : true;
 			const descendants = indexSubagentDescendants(list.byId);
 			const currentGroup = list.current === void 0 ? void 0 : owningGroupKey(workspaces, list.current);
 			const groups = [];
@@ -910,7 +911,7 @@ window.__ModuleLoader__.load({
 			}
 			const pinnedSet = new Set(wanted);
 			for (const g of vaults?.length ? groupByVaults(list, vaults, workspaces, archived) : groupByWorkspace(list, workspaces, archived, view.ungroupedOrder)) {
-				const expanded = expandedGroups.has(g.key);
+				const expanded = groupIsExpanded(g.key);
 				// A pinned session lives in the Pinned section, not twice.
 				const own = pinnedSet.size === 0 ? g.sessions : g.sessions.filter((session) => !pinnedSet.has(session.id));
 				groups.push({
@@ -2252,8 +2253,9 @@ window.__ModuleLoader__.load({
 		const SEARCH_DEBOUNCE_MS = 250;
 		/** `session.search` wire bound, measured in JavaScript UTF-16 code units. */
 		const SEARCH_QUERY_MAX_CODE_UNITS = 500;
-		/** Session rows visible per Workspace before the local overflow control. */
-		const COLLAPSED_SESSION_LIMIT = 5;
+		/** Unused overflow cap. An expanded workspace always lists every session;
+		* the old 5-row clip made imported chats look deleted. */
+		const COLLAPSED_SESSION_LIMIT = Number.POSITIVE_INFINITY;
 		/** Fold one Workspace without charging its provisional New Session against the ordinary-row limit. */
 		function collapsedSessionRows(sessions) {
 			let ordinaryCount = 0;
@@ -2598,6 +2600,7 @@ window.__ModuleLoader__.load({
 			const page = effectiveKnowledgePage(knowledgePage);
 			const groups = (0, react.useMemo)(() => deriveGroups(list, orderedWorkspaces, archivedSessionIds, pendingInteractions, {
 				expandedGroups,
+				groupExpansion,
 				...sessionOrderByAccount[""] === void 0 ? {} : { ungroupedOrder: sessionOrderByAccount[""] }
 			}, pinnedIds, page ? catalog : undefined), [
 				list,
@@ -2605,6 +2608,7 @@ window.__ModuleLoader__.load({
 				archivedSessionIds,
 				pendingInteractions,
 				expandedGroups,
+				groupExpansion,
 				pinnedIds,
 				sessionOrderByAccount,
 				page,

@@ -14801,7 +14801,7 @@ window.__ModuleLoader__.load({
 				onLostPointerCapture: onPointerCancel
 			});
 		}
-		function ConversationRoot({ sessionId, useSession, useSessions, useSessionPendingInteraction, useWorkspaces, useConversation, useInput, useComposerBlock, renderSlot, renderSlotChain, selectWorkspace, t }) {
+		function ConversationRoot({ sessionId, useSession, useSessions, useSessionPendingInteraction, useWorkspaces, useConversation, useInput, useComposerBlock, renderSlot, renderSlotChain, selectWorkspace, loadOlder, t }) {
 			const session = useSession((s) => s);
 			const pendingInteraction = useSessionPendingInteraction((snapshot) => sessionId === void 0 ? void 0 : snapshot.get(sessionId));
 			const conversation = useConversation((s) => s);
@@ -14882,6 +14882,20 @@ window.__ModuleLoader__.load({
 				workspaces.phase,
 				pendingWorkspace
 			]);
+			const pulledHistory = (0, react.useRef)({ id: void 0, pages: 0 });
+			(0, react.useEffect)(() => {
+				if (sessionId === void 0 || typeof loadOlder !== "function") return;
+				if (openState !== "open") return;
+				if (session?.hasMore !== true || session?.loadingOlder === true) return;
+				if (session?.running === true) return;
+				if (pulledHistory.current.id !== sessionId) pulledHistory.current = {
+					id: sessionId,
+					pages: 0
+				};
+				if (pulledHistory.current.pages >= 32) return;
+				pulledHistory.current.pages += 1;
+				loadOlder();
+			}, [sessionId, openState, session?.hasMore, session?.loadingOlder, session?.running, loadOlder]);
 			const parentAvailabilityPending = session?.subagent?.address.mode === "continuable" && session.subagent.parentAvailable === void 0;
 			const settling = sessionId !== void 0 && (shellPhase === "blank" && openState === "loading" && summaryBlank !== true || parentAvailabilityPending);
 			const hero = sessionId === void 0 || shellPhase === "blank" && (openState === "open" || summaryBlank === true);
@@ -16676,6 +16690,12 @@ window.__ModuleLoader__.load({
 				},
 				inject: (sessionId) => ({
 					hooks: { composerBlock: sessionId === void 0 ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId) },
+					loadOlder: sessionId === void 0 ? void 0 : () => {
+						const bound = sessions.binding(sessionId)?.session;
+						if (bound === void 0) return;
+						if (typeof bound.loadThrough === "function") bound.loadThrough(0);
+						else bound.loadOlder();
+					},
 					selectWorkspace: (workspaceId) => {
 						const current = sessionId === void 0 ? void 0 : sessions.list.getSnapshot().byId[sessionId];
 						return workspaceNavigation.openWorkspace(workspaceId, (nextId) => {

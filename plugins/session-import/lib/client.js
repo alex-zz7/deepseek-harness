@@ -24,12 +24,13 @@ window.__ModuleLoader__.load({
 
     const PREFIX = '/session-import';
     const SOURCE_IDS = ['cursor', 'claude', 'codex'];
-    const SOURCE_LABEL = { cursor: 'Cursor', claude: 'Claude Code', codex: 'Codex' };
+    const SOURCE_LABEL = { all: '全部来源', cursor: 'Cursor', claude: 'Claude Code', codex: 'Codex' };
+    const SOURCE_LABEL_EN = { all: 'All sources', cursor: 'Cursor', claude: 'Claude Code', codex: 'Codex' };
 
     const STRINGS = {
       zh: {
         'settings.title': '导入会话',
-        'settings.description': '从 Cursor、Claude Code 或 Codex 导入，已有的会跳过。',
+        'settings.description': '每个来源单独导入。Cursor 含历史对话文件；已有的会跳过。',
         'settings.source': '选择来源',
         'panel.import': '导入',
         'panel.importing': '导入中…',
@@ -43,7 +44,7 @@ window.__ModuleLoader__.load({
       },
       en: {
         'settings.title': 'Import sessions',
-        'settings.description': 'Import from Cursor, Claude Code, or Codex. Already imported items are skipped.',
+        'settings.description': 'Import one source at a time. Cursor includes history transcripts. Already imported items are skipped.',
         'settings.source': 'Choose source',
         'panel.import': 'Import',
         'panel.importing': 'Importing…',
@@ -124,11 +125,21 @@ window.__ModuleLoader__.load({
       return SOURCE_IDS.map((id) => ({ id, label: SOURCE_LABEL[id], total: 0, imported: 0, pending: 0, workspaces: [] }));
     }
 
+    function pickerSummaries(summaries, lang) {
+      const labels = lang === 'en' ? SOURCE_LABEL_EN : SOURCE_LABEL;
+      const pending = summaries.reduce((sum, item) => sum + (item.pending || 0), 0);
+      const workspaces = new Set(summaries.flatMap((item) => (item.workspaces || []).map((workspace) => workspace.path)));
+      return [
+        { id: 'all', label: labels.all, pending, workspaces: [...workspaces].map((path) => ({ path })) },
+        ...summaries.map((item) => ({ ...item, label: labels[item.id] ?? item.label })),
+      ];
+    }
+
     function SourcePicker({ value, summaries, disabled, t, onChange }) {
       const [open, setOpen] = useState(false);
       const rootRef = useRef(null);
       const selected = summaries.find((item) => item.id === value);
-      const label = selected ? (SOURCE_LABEL[selected.id] ?? selected.label) : t('settings.source');
+      const label = selected ? (selected.label ?? SOURCE_LABEL[selected.id]) : t('settings.source');
 
       useEffect(() => {
         if (!open) return undefined;
@@ -174,7 +185,7 @@ window.__ModuleLoader__.load({
                     },
                   },
                   format(t('panel.option'), {
-                    label: SOURCE_LABEL[item.id] ?? item.label,
+                    label: item.label ?? SOURCE_LABEL[item.id],
                     pending: item.pending,
                   }),
                 ),
@@ -216,7 +227,8 @@ window.__ModuleLoader__.load({
         load();
       }, [load]);
 
-      const selected = summaries.find((item) => item.id === source);
+      const choices = pickerSummaries(summaries, t('settings.title') === 'Import sessions' ? 'en' : 'zh');
+      const selected = choices.find((item) => item.id === source);
       const pending = selected?.pending ?? 0;
       const desc =
         error.length > 0
@@ -228,25 +240,51 @@ window.__ModuleLoader__.load({
               }) + (outcome.failed > 0 ? format(t('panel.failed'), { failed: outcome.failed }) : '')
             : source && status === 'ready' && pending === 0
               ? t('panel.empty')
-              : t('settings.description');
+              : source && status === 'ready'
+                ? format(t('panel.counts'), {
+                    pending,
+                    workspaces: selected?.workspaces?.length ?? 0,
+                  })
+                : t('settings.description');
 
       const runImport = () => {
         if (!source || pending === 0 || busy) return;
         setBusy(true);
         setOutcome(null);
         setError('');
-        api('/run', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ sources: [source] }),
-        })
-          .then((payload) => {
+        const totals = { imported: 0, skipped: 0, failed: 0 };
+        const BATCH = 25;
+        const sources = source === 'all' ? [...SOURCE_IDS] : [source];
+        const runSource = (id) =>
+          api('/run', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ sources: [id], limit: BATCH }),
+          }).then((payload) => {
             if (payload?.ok !== true) throw new Error(payload?.message ?? payload?.code ?? 'import failed');
-            setOutcome(payload);
-            load();
-          })
+            totals.imported += Number(payload.imported) || 0;
+            totals.skipped += Number(payload.skipped) || 0;
+            totals.failed += Number(payload.failed) || 0;
+            setOutcome({ ...totals });
+            return api('/discover', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({}),
+            }).then((discover) => {
+              if (discover?.ok === true && Array.isArray(discover.summaries)) setSummaries(discover.summaries);
+              const left = (discover.summaries || []).find((item) => item.id === id)?.pending ?? 0;
+              if (left > 0 && (payload.imported > 0 || payload.failed > 0)) return runSource(id);
+            });
+          });
+        sources
+          .reduce((chain, id) => chain.then(() => runSource(id)), Promise.resolve())
+          .then(() => totals)
+          .then((result) => setOutcome(result))
           .catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)))
-          .finally(() => setBusy(false));
+          .finally(() => {
+            setBusy(false);
+            load();
+          });
       };
 
       return h(
@@ -263,7 +301,7 @@ window.__ModuleLoader__.load({
           { className: 'si-actions' },
           h(SourcePicker, {
             value: source,
-            summaries,
+            summaries: choices,
             disabled: busy,
             t,
             onChange: (next) => {

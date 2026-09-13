@@ -91,7 +91,21 @@ export function stripInjectedBlocks(text) {
   }
   out = out.replace(/<local-command-stdout>[\s\S]*?<\/local-command-stdout>/gi, '');
   out = out.replace(/<INSTRUCTIONS>[\s\S]*?<\/INSTRUCTIONS>/gi, '');
+  out = unwrapUserQuery(out);
   out = out.replace(/\n{3,}/g, '\n\n');
+  return out.trim();
+}
+
+/**
+ * Cursor wraps the typed prompt in `<user_query>` and a timestamp.
+ * @param text - raw user-bubble or transcript text.
+ * @returns the inner prompt when those wrappers are present.
+ */
+export function unwrapUserQuery(text) {
+  let out = String(text ?? '');
+  out = out.replace(/<timestamp>[\s\S]*?<\/timestamp>/gi, '');
+  const query = /<user_query>\s*([\s\S]*?)\s*<\/user_query>/i.exec(out);
+  if (query !== null) return query[1].trim();
   return out.trim();
 }
 

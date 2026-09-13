@@ -125,7 +125,7 @@ content* rather than written as a blank session.
 
 | Source | Location | Notes |
 |---|---|---|
-| Cursor | `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb` | `composerHeaders` for the index, `cursorDiskKV` `bubbleId:<composerId>:*` for the messages. Opened read-only through `node:sqlite`; ordering follows SQLite `rowid`, because a long Cursor conversation has hundreds of bubbles with an empty `createdAt`. |
+| Cursor | `state.vscdb` plus `~/.cursor/projects/*/agent-transcripts` | `composerHeaders` for chats still in SQLite; agent-transcript JSONL for the rest (older workspaces and many current agent tabs). Bubbles are read read-only through `node:sqlite`. |
 | Claude Code | `~/.claude/projects/<project>/*.jsonl` | The project directory name is lossy, so the workspace comes from each record's own `cwd`. |
 | Codex | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` plus `archived_sessions/` | `session_meta` gives the workspace and identity, `response_item` the messages. |
 

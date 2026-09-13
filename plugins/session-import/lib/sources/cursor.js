@@ -22,7 +22,8 @@
  * @module @alex/dsh-session-import/sources/cursor
  */
 
-import { newConversation, pushMessage, toMillis } from '../conversation.js';
+import { readFileSync } from 'node:fs';
+import { newConversation, plainTextOf, pushMessage, stripInjectedBlocks, toMillis } from '../conversation.js';
 import { openCursorDb } from '../scan.js';
 
 /**
@@ -106,32 +107,63 @@ export function readCursor(ref) {
     updatedAt: ref.updatedAt,
     meta: ref.meta,
   });
-  const db = openCursorDb(ref.locator.path);
-  try {
-    for (const row of readCursorBubbles(db, ref.locator.composerId)) {
-      let bubble;
-      try {
-        bubble = JSON.parse(row.value);
-      } catch {
-        continue;
-      }
-      if (bubble === null || typeof bubble !== 'object') continue;
-      const time = toMillis(bubble.createdAt, 0);
-      if (time > 0 && conversation.createdAt === 0) conversation.createdAt = time;
-      if (bubble.type === 1) {
+  if (typeof ref.locator.path === 'string') {
+    const db = openCursorDb(ref.locator.path);
+    try {
+      for (const row of readCursorBubbles(db, ref.locator.composerId)) {
+        let bubble;
+        try {
+          bubble = JSON.parse(row.value);
+        } catch {
+          continue;
+        }
+        if (bubble === null || typeof bubble !== 'object') continue;
+        const time = toMillis(bubble.createdAt, 0);
+        if (time > 0 && conversation.createdAt === 0) conversation.createdAt = time;
+        if (bubble.type === 1) {
+          const text = stripInjectedBlocks(bubbleText(bubble));
+          if (text.length === 0) continue;
+          pushMessage(conversation, 'user', text, { time });
+          continue;
+        }
+        if (bubble.type !== 2) continue;
+        const reasoning = bubbleReasoning(bubble);
         const text = bubbleText(bubble);
-        if (text.trim().length === 0) continue;
-        pushMessage(conversation, 'user', text, { time });
-        continue;
+        if (reasoning.trim().length > 0) pushMessage(conversation, 'assistant', '', { reasoning, time });
+        if (text.trim().length > 0) pushMessage(conversation, 'assistant', text, { time });
       }
-      if (bubble.type !== 2) continue;
-      const reasoning = bubbleReasoning(bubble);
-      const text = bubbleText(bubble);
-      if (reasoning.trim().length > 0) pushMessage(conversation, 'assistant', '', { reasoning, time });
-      if (text.trim().length > 0) pushMessage(conversation, 'assistant', text, { time });
+    } finally {
+      db.close();
     }
-  } finally {
-    db.close();
+  }
+  if (conversation.messages.length === 0 && typeof ref.locator.transcript === 'string') {
+    readCursorTranscript(conversation, ref.locator.transcript);
   }
   return conversation;
+}
+
+/**
+ * Read a Cursor agent-transcript JSONL into the conversation.
+ *
+ * These files are the full chat when SQLite has no bubbles — older workspaces
+ * and some current agent tabs only persist here.
+ * @param conversation - conversation being built.
+ * @param path - absolute path to `<id>.jsonl`.
+ */
+function readCursorTranscript(conversation, path) {
+  const raw = readFileSync(path, 'utf8');
+  for (const line of raw.split('\n')) {
+    if (line.trim().length === 0) continue;
+    let record;
+    try {
+      record = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const role = record.role;
+    if (role !== 'user' && role !== 'assistant') continue;
+    const text = stripInjectedBlocks(plainTextOf(record.message?.content));
+    if (text.length === 0) continue;
+    pushMessage(conversation, role, text);
+  }
 }

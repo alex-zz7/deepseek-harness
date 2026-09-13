@@ -177,12 +177,26 @@ export function createImporter(options = {}) {
      * @returns a result naming the artifact written and the session it became.
      */
     async importOne(request) {
+      const replacing = request.replace === true;
+      if (request.force !== true && !replacing && typeof request.source === 'string' && typeof request.id === 'string') {
+        const existing = (await readLedger(roots.ledger)).entries[ledgerKey(request.source, request.id)];
+        if (existing !== undefined) {
+          return {
+            ok: true,
+            skipped: true,
+            source: request.source,
+            id: request.id,
+            sessionId: existing.sessionId,
+            title: existing.title,
+            reason: existing.digest === 'empty' ? 'no conversation content' : 'already imported',
+          };
+        }
+      }
       const preview = await importer.preview(request);
       if (!preview.ok) return { ok: false, source: request.source, id: request.id, reason: preview.reason };
       const ledger = await readLedger(roots.ledger);
       const key = ledgerKey(preview.plan.source, preview.plan.externalId);
       const existing = ledger.entries[key];
-      const replacing = request.replace === true;
       if (existing !== undefined && request.force !== true && !replacing) {
         return {
           ok: true,
@@ -196,6 +210,20 @@ export function createImporter(options = {}) {
       }
       if (request.title !== undefined && request.title.trim().length > 0) preview.plan.title = request.title.trim();
       if (preview.plan.messageCount === 0 && request.force !== true && !replacing) {
+        await recordImport(
+          {
+            source: preview.plan.source,
+            externalId: preview.plan.externalId,
+            sessionId: '',
+            title: preview.plan.title,
+            cwd: preview.plan.cwd,
+            eventCount: 0,
+            messageCount: 0,
+            artifact: null,
+            digest: 'empty',
+          },
+          roots.ledger,
+        );
         return {
           ok: true,
           skipped: true,
@@ -292,12 +320,17 @@ export function createImporter(options = {}) {
     async run(request = {}) {
       const listing = await importer.list({ ...request, limit: Number.MAX_SAFE_INTEGER });
       const wanted = Array.isArray(request.ids) && request.ids.length > 0 ? new Set(request.ids.map(String)) : null;
-      const candidates = listing.items.filter((item) => (wanted === null ? true : wanted.has(item.id)));
+      const candidates = listing.items.filter((item) => {
+        if (wanted !== null) return wanted.has(item.id);
+        if (request.force === true) return true;
+        return item.imported !== true;
+      });
       const limit = Number.isInteger(request.limit) && request.limit > 0 ? request.limit : candidates.length;
       const results = [];
       let imported = 0;
       let skipped = 0;
       let failed = 0;
+      let writes = 0;
       /** An empty conversation has nothing to import; say so instead of writing a blank session. */
       const emptyResult = (item, preview) => ({
         ok: true,
@@ -310,7 +343,8 @@ export function createImporter(options = {}) {
         cwd: preview.summary.cwd,
         reason: 'no conversation content',
       });
-      for (const item of candidates.slice(0, limit)) {
+      for (const item of candidates) {
+        if (writes >= limit) break;
         if (request.dryRun === true) {
           const preview = await importer.preview({ source: item.source, id: item.id });
           let result;
@@ -331,6 +365,7 @@ export function createImporter(options = {}) {
           results.push(result);
           if (result.ok) (result.skipped ? skipped++ : imported++);
           else failed++;
+          if (!result.ok || result.reason !== 'no conversation content') writes += 1;
           request.onProgress?.(result, results.length, candidates.length);
           continue;
         }
@@ -339,6 +374,7 @@ export function createImporter(options = {}) {
         if (!result.ok) failed++;
         else if (result.skipped === true) skipped++;
         else imported++;
+        if (!result.ok || result.reason !== 'no conversation content') writes += 1;
         request.onProgress?.(result, results.length, candidates.length);
       }
       return { results, imported, skipped, failed, considered: candidates.length };
