@@ -274,13 +274,20 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
           .filter((chunk) => chunk.path && !/(^|\/)(INDEX|README|AGENTS)\.md$/i.test(chunk.path))
           .map((chunk) => chunk.path),
       ).size;
-      const res = await index.search(args.query, {
-        k,
-        kind: args.kind,
-        pathPrefix: args.path_prefix,
-        cacheDir: CACHE_DIR,
-        collapse: sourceFiles > 8,
-      });
+      const scoped = Boolean(args.kind || args.path_prefix);
+      const res = scoped
+        ? await index.search(args.query, {
+            k,
+            kind: args.kind,
+            pathPrefix: args.path_prefix,
+            cacheDir: CACHE_DIR,
+            collapse: sourceFiles > 8,
+          })
+        : await index.retrieve(args.query, {
+            k,
+            cacheDir: CACHE_DIR,
+            collapse: sourceFiles > 8,
+          });
       const ms = Date.now() - t0;
 
       // RRF scores are tiny and not comparable across queries, but their

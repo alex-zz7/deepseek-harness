@@ -6,6 +6,10 @@
 
 **全本地、零 API 密钥、零联网**（模型首次下载后）。
 
+同一句 `Gptimage skill 原理？` 的前后对比（平铺检索搜空 → 先认文档后打开 `gptimage2/SKILL.md`）：
+
+https://github.com/alex-zz7/deepseek-harness/blob/main/docs/knowledge-retrieve.md
+
 ## 快速使用
 
 在对话里直接说人话就行，我会调用：
@@ -29,6 +33,16 @@ node kb.mjs --read skills/INDEX.md --lines 1-40
 ## 架构
 
 ```
+提问 ──→ 认文档（标题 / 别名 / 描述）──→ 只在该份里检索
+              │ 认不准，或问的是「怎么做某件事」
+              ▼
+         向量 + BM25 ──→ RRF ──→ 文件级去重 ──→ top-k
+```
+
+对话、`kb_search`、`kb.mjs`、`/knowledge-studio/search` 走同一条。指定 `--kind` / `path_prefix` 时仍是原来的平铺检索。
+
+```
+旧的平铺检索（认不准时才用）：
 提问 ──┬─→ 向量检索 (e5-large, 1024维余弦)  ─┐
        │     找语义/跨语言近似                │
        └─→ BM25 关键词检索                   ├─→ RRF 融合 ─→ 文件级去重 ─→ top-k
@@ -52,6 +66,8 @@ node kb.mjs --read skills/INDEX.md --lines 1-40
 | `smoke.mjs` | MCP 协议冒烟测试（JSON-RPC 握手 + 三个工具） |
 | `lib/chunk.mjs` | Markdown 分块器 |
 | `lib/tokenize.mjs` | 中英混合分词（中文二元组 + camelCase 拆解） |
+| `lib/catalog.mjs` | 文档实体（标题 / 别名 / 描述），查询时拼出 |
+| `lib/retrieve.mjs` | 先认文档再检索；认不准才走混合检索 |
 | `lib/search.mjs` | 混合检索核心 |
 | `lib/walk.mjs` | 遍历规则与分类 |
 | `index/` | 生成物：`chunks.jsonl` + `vectors.f32` + `manifest.json` |

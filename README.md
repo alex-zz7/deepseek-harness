@@ -49,6 +49,18 @@ The app and a browser tab share one server (see `~/.dsh/web-url`), so they do
 not fight over session locks. `./mac/open-in-browser.sh` is the older Mac-only
 attach script; `npm start` is the cross-platform one.
 
+## Knowledge retrieve
+
+The App knowledge chat resolves a document first (title / alias / description),
+then reads that file. Asking `Gptimage skill 原理` used to miss
+`gptimage2/SKILL.md`; it now opens that body.
+
+Before / after and how to reproduce:
+
+https://github.com/alex-zz7/deepseek-harness/blob/main/docs/knowledge-retrieve.md
+
+The same URL is in **Settings** (and the Mac Help menu).
+
 ## What it does
 
 On launch the shell:

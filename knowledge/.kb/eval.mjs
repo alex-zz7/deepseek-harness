@@ -70,6 +70,8 @@ const CASES = [
   // ── Exact identifier lookups: the lexical half's job ────────────────────
   { q: 'gbp-suspension-recovery', expect: ['gbp-suspension-recovery'], label: 'exact name' },
   { q: 'baoyu-cover-image', expect: ['baoyu-cover-image'], label: 'exact name' },
+  { q: 'Gptimage skill 原理', expect: ['gptimage2/SKILL.md'],
+    family: ['yt-story-script', 'guizang-ppt-skill'], label: 'alias name' },
   { q: 'asc-submission-health', expect: ['asc-submission-health'], label: 'exact name' },
   { q: 'App Store 拒审怎么申诉', expect: ['app-store-review', 'asc-submission-health'],
     family: ['asc-', 'iosship'], label: 'exact-ish' },
@@ -134,3 +136,30 @@ if (failures.length && VERBOSE) {
     for (const m of f.res.matches.slice(0, 5)) console.log(`   ${m.score}  ${m.path}:${m.startLine}`);
   }
 }
+
+const RETRIEVE_CASES = [
+  { q: 'Gptimage skill 原理？', expect: ['gptimage2/SKILL.md'], intent: 'skill' },
+  { q: 'gptimage2', expect: ['gptimage2/SKILL.md'], intent: 'skill' },
+  { q: 'alexsignal 是什么', expect: ['github/projects/alexsignal'], intent: 'doc' },
+  { q: 'skill 一共分几类', expect: ['skills/INDEX.md'], intent: 'meta' },
+  { q: '怎么用 Cloudflare 部署 Worker', expect: ['cloudflare', 'wrangler'], intent: 'topic' },
+];
+
+console.log('\n── retrieve (catalog first) ──');
+let retrievePass = 0;
+for (const c of RETRIEVE_CASES) {
+  const res = await index.retrieve(c.q, { k: K, cacheDir: CACHE_DIR });
+  const rank = res.matches.findIndex((m) => c.expect.some((e) => match(m.path, e)));
+  const ok =
+    rank >= 0 &&
+    res.intent === c.intent &&
+    res.refuse !== true &&
+    (c.intent === 'topic' || rank === 0);
+  if (ok) retrievePass++;
+  console.log(
+    `${ok ? 'hit@1' : 'FAIL'}`.padEnd(10) +
+      ` ${c.intent.padEnd(6)} resolved=${res.resolved || '-'}  "${c.q}"`,
+  );
+  if (rank >= 0) console.log(`           → ${res.matches[rank].path}:${res.matches[rank].startLine}`);
+}
+console.log(`retrieve ${retrievePass}/${RETRIEVE_CASES.length}`);

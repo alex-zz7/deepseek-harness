@@ -948,10 +948,12 @@ export function apply(ctx) {
     }
     const handle = await loadIndex(root, indexDir);
     const k = Math.min(Math.max(Number(url.searchParams.get('k')) || 8, 1), 20);
-    const result = await handle.search(query, { k, cacheDir: pathsFor(root).cacheDir });
+    const result = await handle.retrieve(query, { k, cacheDir: pathsFor(root).cacheDir });
     sendJson(res, 200, {
       ok: true,
       query: result.query,
+      intent: result.intent,
+      resolved: result.resolved || null,
       dense: result.dense,
       matches: result.matches.map((match) => ({
         path: match.path,
@@ -1127,7 +1129,6 @@ function snippetOf(text) {
   return flat.length <= 180 ? flat : `${flat.slice(0, 177)}…`;
 }
 
-const RETRIEVE_LOW = 0.022;
 const RETRIEVE_K = 8;
 const FOLLOW_UP =
   /^(那|还有|然后|继续|同上|这个|刚才|上面|以及|所以)|第[一二三四五六七八九十\d]+天|呢$|怎么样$|具体(呢|是)/;
@@ -1219,7 +1220,7 @@ async function formatRetrieveMatches(root, matches) {
   return out;
 }
 
-function buildRetrievePrompt({ vaultName, refuse, matches, outline }) {
+function buildRetrievePrompt({ vaultName, refuse, matches, outline, resolved }) {
   if (refuse) {
     return [
       `<knowledge_context vault="${vaultName}" refuse="true">`,
@@ -1229,8 +1230,10 @@ function buildRetrievePrompt({ vaultName, refuse, matches, outline }) {
     ].join('\n');
   }
   const lines = [
-    `<knowledge_context vault="${vaultName}" refuse="false">`,
-    'These passages were already retrieved from this vault. Answer using only this context.',
+    `<knowledge_context vault="${vaultName}" refuse="false"${resolved ? ` skill="${resolved}"` : ''}>`,
+    resolved
+      ? `The vault resolved this question to "${resolved}". These passages are from that document. Answer using only this context.`
+      : 'These passages were already retrieved from this vault. Answer using only this context.',
     'Do not call Bash, Skill, Read, Grep, Glob, or mcp__kb__kb_search. Do not open index files.',
     'When you cite a source, write only the filename in brackets, e.g. 〔手册名.pdf〕. Never paste file:// URLs, open: lines, or absolute paths.',
   ];
@@ -1266,13 +1269,12 @@ async function retrieveVault(hint = {}) {
   const sourceFiles = new Set(
     handle.chunks.filter((chunk) => chunk.path && !isNavChunkPath(chunk.path)).map((chunk) => chunk.path),
   ).size;
-  const result = await handle.search(searchQuery, {
+  const result = await handle.retrieve(searchQuery, {
     k: RETRIEVE_K,
     cacheDir,
     collapse: sourceFiles > 8,
   });
-  const top = result.matches[0]?.score ?? 0;
-  const refuse = result.matches.length === 0 || top < RETRIEVE_LOW;
+  const refuse = result.refuse === true || result.matches.length === 0;
   const matches = refuse ? [] : await formatRetrieveMatches(root, result.matches);
   const outline = vaultOutline(handle);
   const sources = [];
@@ -1295,11 +1297,14 @@ async function retrieveVault(hint = {}) {
     matches,
     sources,
     outline,
+    intent: result.intent,
+    resolved: result.resolved || null,
     prompt: buildRetrievePrompt({
       vaultName: vault.name,
       refuse,
       matches,
       outline,
+      resolved: result.resolved || null,
     }),
   };
 }

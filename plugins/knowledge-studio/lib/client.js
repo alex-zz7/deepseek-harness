@@ -15,11 +15,24 @@ window.__ModuleLoader__.load({
     const h = react.createElement;
     const { useEffect, useLayoutEffect, useRef, useState } = react;
 
+    const GITHUB_REPO = 'https://github.com/alex-zz7/deepseek-harness';
+    const GITHUB_RETRIEVE_DOCS = `${GITHUB_REPO}/blob/main/docs/knowledge-retrieve.md`;
     const ACTION = 'knowledge-studio-action';
     const PAGE = 'knowledge-studio-page';
     const PAGE_STORE = 'dsh-knowledge-page';
 
+    function isHarnessApp() {
+      if (typeof window === 'undefined') return false;
+      if (window.__DSH_SIDEBAR_ACTIONS__ === true) return true;
+      try {
+        return window.webkit?.messageHandlers?.dshPickWorkspace !== undefined;
+      } catch {
+        return false;
+      }
+    }
+
     function readStoredPage() {
+      if (!isHarnessApp()) return false;
       try {
         return window.localStorage.getItem(PAGE_STORE) !== '0';
       } catch {
@@ -203,6 +216,15 @@ window.__ModuleLoader__.load({
         font:18px/1 -apple-system, BlinkMacSystemFont, sans-serif; cursor:pointer;
       }
       .ks-sources-bar .ks-src-close:hover { background:var(--dsw-alias-interactive-bg-hover); }
+      .ks-settings-row {
+        display:flex; align-items:flex-start; justify-content:space-between; gap:16px; width:100%;
+      }
+      .ks-settings-row > div:first-child { min-width:0; }
+      .ks-settings-row b { display:block; font-weight:600; }
+      .ks-settings-row p { margin:4px 0 0; color:var(--dsw-alias-label-secondary); font-size:12px; word-break:break-all; }
+      .ks-settings-row a, .ks-github a { color:#4d6bfe; word-break:break-all; }
+      .ks-github { margin:16px 0 0; display:flex; flex-direction:column; gap:6px; }
+      .ks-github b { font-size:12px; }
     `;
 
     function ensureStyle() {
@@ -1137,6 +1159,13 @@ window.__ModuleLoader__.load({
             setup
               ? null
               : h('p', { className: 'ks-hint' }, '更新索引只补新增或改过的文件。'),
+            h(
+              'div',
+              { className: 'ks-github' },
+              h('b', null, 'GitHub'),
+              h('a', { href: GITHUB_REPO, target: '_blank', rel: 'noreferrer' }, GITHUB_REPO),
+              h('a', { href: GITHUB_RETRIEVE_DOCS, target: '_blank', rel: 'noreferrer' }, '检索对比说明'),
+            ),
           ),
           h(
             'div',
@@ -1200,6 +1229,25 @@ window.__ModuleLoader__.load({
 
     function KnowledgeChrome(props) {
       return h(react.Fragment, null, h(KnowledgeTrigger, props), h(SettingsSheet));
+    }
+
+    function GithubDocsRow() {
+      ensureStyle();
+      return h(
+        'div',
+        { className: 'ks-settings-row' },
+        h(
+          'div',
+          null,
+          h('b', null, 'GitHub'),
+          h('p', null, GITHUB_REPO),
+        ),
+        h(
+          'a',
+          { href: GITHUB_RETRIEVE_DOCS, target: '_blank', rel: 'noreferrer' },
+          '检索对比',
+        ),
+      );
     }
 
     function ensureToast() {
@@ -1558,7 +1606,7 @@ window.__ModuleLoader__.load({
 
     const zh = { trigger: '知识库' };
     const en = { trigger: 'Knowledge' };
-    const inject = ['slots', 'layout', 'locale', 'sidebarRight'];
+    const inject = ['slots', 'layout', 'locale', 'sidebarRight', 'settings'];
 
     function apply(ctx) {
       window.__ksOpenInSidebar = (address) => {
@@ -1569,37 +1617,54 @@ window.__ModuleLoader__.load({
       ctx.effect(() => ctx.locale.register('knowledge-studio', { zh, en }), 'knowledge-studio: locale');
       ctx.effect(
         () =>
-          ctx.slots.inject('conversation.input.preamble', () =>
+          ctx.slots.inject('settings.general.item', () =>
             ctx.slots.register(
               {
-                name: 'conversation.input.preamble',
-                id: 'knowledge-sources',
-                order: 0,
-                inject: (sessionId) => ({ sessionId }),
-              },
-              KnowledgeSourceBar,
-            ),
-          ),
-        'knowledge-studio: source bar',
-      );
-      ctx.effect(
-        () =>
-          ctx.slots.inject('sidebar.footer.action', () =>
-            ctx.slots.register(
-              {
-                name: 'sidebar.footer.action',
-                id: 'knowledge-studio',
-                order: 10,
+                name: 'settings.general.item',
+                id: 'github-docs',
+                order: 80,
                 locale: 'knowledge-studio',
-                inject: () => ({
-                  onClose: () => ctx.layout.selectPanel(null),
-                }),
               },
-              KnowledgeChrome,
+              GithubDocsRow,
             ),
           ),
-        'knowledge-studio: page button',
+        'knowledge-studio: github docs',
       );
+      if (isHarnessApp()) {
+        ctx.effect(
+          () =>
+            ctx.slots.inject('conversation.input.preamble', () =>
+              ctx.slots.register(
+                {
+                  name: 'conversation.input.preamble',
+                  id: 'knowledge-sources',
+                  order: 0,
+                  inject: (sessionId) => ({ sessionId }),
+                },
+                KnowledgeSourceBar,
+              ),
+            ),
+          'knowledge-studio: source bar',
+        );
+        ctx.effect(
+          () =>
+            ctx.slots.inject('sidebar.footer.action', () =>
+              ctx.slots.register(
+                {
+                  name: 'sidebar.footer.action',
+                  id: 'knowledge-studio',
+                  order: 10,
+                  locale: 'knowledge-studio',
+                  inject: () => ({
+                    onClose: () => ctx.layout.selectPanel(null),
+                  }),
+                },
+                KnowledgeChrome,
+              ),
+            ),
+          'knowledge-studio: page button',
+        );
+      }
 
       const syncGate = () => {
         api('/knowledge-studio/status')
@@ -1621,11 +1686,15 @@ window.__ModuleLoader__.load({
         try {
           ensureToast();
           bindSourceOpens();
-          setKnowledgePage(readStoredPage());
+          setKnowledgePage(isHarnessApp() ? readStoredPage() : false);
           fetch('/sidebar-editor/ui-state')
             .then((res) => res.json())
             .catch(() => ({}))
             .then((body) => {
+              if (!isHarnessApp()) {
+                setKnowledgePage(false);
+                return;
+              }
               const saved = body?.state?.knowledgePage;
               setKnowledgePage(typeof saved === 'boolean' ? saved : readStoredPage());
               syncGate();

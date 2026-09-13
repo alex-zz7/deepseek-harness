@@ -4,8 +4,8 @@
  * There is no Chinese word segmenter here on purpose: CJK text is indexed as
  * character bigrams, which is the standard segmentation-free approach and
  * keeps recall high without a dictionary. Latin text is split on camelCase,
- * underscores, dots and dashes so `getUserById` and `blog-write` are
- * reachable by their parts.
+ * underscores, dots, dashes, and a trailing version digit so `getUserById`,
+ * `blog-write`, and `gptimage2` are reachable by their parts (`gptimage`).
  */
 
 const CJK_RUN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af]+/g;
@@ -18,6 +18,15 @@ function splitIdentifier(word) {
     .toLowerCase()
     .split(/[\s._\-/]+/)
     .filter(Boolean);
+}
+
+/** Keep the whole token and a digit-stripped stem (`gptimage2` → `gptimage`). */
+function expandLatin(word) {
+  const terms = [word];
+  if (/[._\-/]/.test(word)) terms.push(...splitIdentifier(word));
+  const stem = word.replace(/\d+$/, '');
+  if (stem.length >= 3 && stem !== word) terms.push(stem);
+  return terms;
 }
 
 /**
@@ -34,8 +43,7 @@ export function tokenize(text) {
   for (const m of spaced.toLowerCase().matchAll(LATIN_RUN)) {
     const w = m[0];
     if (w.length < 2) continue;
-    terms.push(w);
-    if (/[._\-/]/.test(w)) terms.push(...splitIdentifier(w));
+    terms.push(...expandLatin(w));
   }
 
   // CJK: overlapping bigrams, plus single chars for one-character queries.

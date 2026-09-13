@@ -3,11 +3,22 @@
 
 用法: gen-skill-index.py <vault目录> <输出目录> [隔离清单]
 """
+import json
 import re
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+def aliases_for(name):
+    n = name.lower()
+    out = {n, n.replace("-", "")}
+    stem = re.sub(r"\d+$", "", n)
+    if len(stem) >= 3 and stem != n:
+        out.add(stem)
+        out.add(stem.replace("-", ""))
+    return sorted(out)
 
 
 def read_description(skill_md: Path):
@@ -95,6 +106,22 @@ def main():
             lines.append("")
 
     (outdir / "INDEX.md").write_text("\n".join(lines), encoding="utf-8")
+    catalog = []
+    for group in sorted(groups):
+        for name, rel, n_refs, desc in sorted(groups[group]):
+            catalog.append({
+                "id": name,
+                "name": name,
+                "group": group,
+                "path": f"skills/vault/{rel.as_posix()}",
+                "aliases": aliases_for(name),
+                "references": n_refs,
+                "description": desc,
+            })
+    (outdir / "catalog.json").write_text(
+        json.dumps({"skills": catalog}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     print(f"索引 {total} 个 skill / {len(groups)} 组")
 
 

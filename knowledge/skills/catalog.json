@@ -1,0 +1,3005 @@
+{
+  "skills": [
+    {
+      "id": "proma-coach",
+      "name": "proma-coach",
+      "group": "01-sent2x-增长",
+      "path": "skills/vault/01-sent2x-增长/proma-coach/SKILL.md",
+      "aliases": [
+        "proma-coach",
+        "promacoach"
+      ],
+      "references": 0,
+      "description": "Proma 使用顾问，主动把用户在 Proma/Agent/Skill/Chat 工具/项目里的摩擦、疑惑、重复解释和低效流程，转成更顺手的使用方式或合适的知识维护动作。触发要积极：用户表达不满、困惑、重复提醒、\"为什么没用/不会自动/又要我说\"、\"算了，我自己来\"、\"你上次不是说...\"、\"你又忘了\"、\"以后都这样/能不能记住/少让我选/下次自动\"、询问 Proma 怎么用更好、某事能不能固化、该用 Agent 还是 Chat 工具、…"
+    },
+    {
+      "id": "sent2x-backlink-watch",
+      "name": "sent2x-backlink-watch",
+      "group": "01-sent2x-增长",
+      "path": "skills/vault/01-sent2x-增长/sent2x-backlink-watch/SKILL.md",
+      "aliases": [
+        "sent2x-backlink-watch",
+        "sent2xbacklinkwatch"
+      ],
+      "references": 0,
+      "description": "每天 9:30 看守外链战役：到期动作提醒 + 各目录 listing 外链是否真上线（只读+更新文档，不代发）"
+    },
+    {
+      "id": "sent2x-bip-replies",
+      "name": "sent2x-bip-replies",
+      "group": "01-sent2x-增长",
+      "path": "skills/vault/01-sent2x-增长/sent2x-bip-replies/SKILL.md",
+      "aliases": [
+        "sent2x-bip-replies",
+        "sent2xbipreplies"
+      ],
+      "references": 0,
+      "description": "Use Grok to find popular #buildinpublic posts on X, generate thoughtful English replies in a learner tone, and schedule them via Sent2X CLI. Combines grok-ai-proxy for research + Sent2X CLI for execution."
+    },
+    {
+      "id": "sent2x-bot-knowledge",
+      "name": "sent2x-bot-knowledge",
+      "group": "01-sent2x-增长",
+      "path": "skills/vault/01-sent2x-增长/sent2x-bot-knowledge/SKILL.md",
+      "aliases": [
+        "sent2x-bot-knowledge",
+        "sent2xbotknowledge"
+      ],
+      "references": 0,
+      "description": "> 维护 sent2x.com 官网客服机器人（ConnectBot）的知识库 public/bot-knowledge.md， 并把它同步进机器人。触发：「更新机器人知识库」「bot 知识库」「客服 bot 回答不对」 「/bot-knowledge」，或产品价格 / 限额 / 安装流程 / 功能有变化时。"
+    },
+    {
+      "id": "sent2x-cold-email",
+      "name": "sent2x-cold-email",
+      "group": "01-sent2x-增长",
+      "path": "skills/vault/01-sent2x-增长/sent2x-cold-email/SKILL.md",
+      "aliases": [
+        "sent2x-cold-email",
+        "sent2xcoldemail"
+      ],
+      "references": 0,
+      "description": "Sent2X 外联日常。补过审核库存、写 X 私信稿（Lucy 自己发）、她开口后才在 zzalex Gmail 起草定时。含 SocialData 核 7 天、邮箱 provenance、PECR、产品边界、UTM、ledger。Lucy 说「今日冷邮件」「今天发信」「outreach」「补库存」「私信稿」时使用。"
+    },
+    {
+      "id": "sent2x-geo-blog-daily",
+      "name": "sent2x-geo-blog-daily",
+      "group": "01-sent2x-增长",
+      "path": "skills/vault/01-sent2x-增长/sent2x-geo-blog-daily/SKILL.md",
+      "aliases": [
+        "sent2x-geo-blog-daily",
+        "sent2xgeoblogdaily"
+      ],
+      "references": 0,
+      "description": "每天 6:43 刷新 sent2x.com 的权威 GEO 页（优先改写，禁止互抢新文）并 IndexNow 提交"
+    },
+    {
+      "id": "sent2x-growth-daily",
+      "name": "sent2x-growth-daily",
+      "group": "01-sent2x-增长",
+      "path": "skills/vault/01-sent2x-增长/sent2x-growth-daily/SKILL.md",
+      "aliases": [
+        "sent2x-growth-daily",
+        "sent2xgrowthdaily"
+      ],
+      "references": 0,
+      "description": "每天 8:17 出 Sent2X 数据日报 + GEO 博客核查（只读，不发布任何内容）"
+    },
+    {
+      "id": "sent2x-ih-daily",
+      "name": "sent2x-ih-daily",
+      "group": "01-sent2x-增长",
+      "path": "skills/vault/01-sent2x-增长/sent2x-ih-daily/SKILL.md",
+      "aliases": [
+        "sent2x-ih-daily",
+        "sent2xihdaily"
+      ],
+      "references": 0,
+      "description": "Sent2X Indie Hackers daily drafts and sending. Local ego-lite research, English drafts in chat, then agent clicks Reply/Post to send. Use when Lucy says 今日 IH, Indie Hackers 草稿, IH 评论稿, 帮我发, posted, 发了, or the IH daily a…"
+    },
+    {
+      "id": "sent2x-pitch",
+      "name": "sent2x-pitch",
+      "group": "01-sent2x-增长",
+      "path": "skills/vault/01-sent2x-增长/sent2x-pitch/SKILL.md",
+      "aliases": [
+        "sent2x-pitch",
+        "sent2xpitch"
+      ],
+      "references": 0,
+      "description": "Draft an English X reply in Alex Echo's voice that answers 'what are you building?' or naturally plugs his projects (Sent2X, digital resources site) into a thread. Use when Alex shares a tweet/thread/screenshot and wants…"
+    },
+    {
+      "id": "sent2x-reddit-daily",
+      "name": "sent2x-reddit-daily",
+      "group": "01-sent2x-增长",
+      "path": "skills/vault/01-sent2x-增长/sent2x-reddit-daily/SKILL.md",
+      "aliases": [
+        "sent2x-reddit-daily",
+        "sent2xredditdaily"
+      ],
+      "references": 0,
+      "description": "Sent2X 每日增长闭环。用 ego-lite 只读找 Reddit 买家帖、写评论稿和每周一篇自贴稿、更新中文排期、每周读数。目标是资料页 / 落地页 / GitHub 的点击和 Free 注册，不是每天发一条。不代发、不 push。Lucy 说「今日 Reddit」「增长工作流」「给我今天的评论稿」时使用。"
+    },
+    {
+      "id": "sent2x-seo-audit",
+      "name": "sent2x-seo-audit",
+      "group": "01-sent2x-增长",
+      "path": "skills/vault/01-sent2x-增长/sent2x-seo-audit/SKILL.md",
+      "aliases": [
+        "sent2x-seo-audit",
+        "sent2xseoaudit"
+      ],
+      "references": 0,
+      "description": "> Sent2X 官网增长闭环（sent2x.com）。目标是可归因的 Free 注册和付费，不是 SEO 分数。 每天一个能上线的主活（转化 > 落地页 > snippet），每周一做深度核对（GSC 90 天、剪页、全站审计、商店词、提案）。 触发：本地 Cursor Automation，或聊天 /blog seo-audit、/sent2x-seo-audit、「今天检查一下 SEO」。 不写重叠的 X-scheduler 文章…"
+    },
+    {
+      "id": "sent2x-site-growth",
+      "name": "sent2x-site-growth",
+      "group": "01-sent2x-增长",
+      "path": "skills/vault/01-sent2x-增长/sent2x-site-growth/SKILL.md",
+      "aliases": [
+        "sent2x-site-growth",
+        "sent2xsitegrowth"
+      ],
+      "references": 0,
+      "description": "Daily Sent2X website growth — raise popularity, CTR, and AI/search exposure via GEO page refresh, IndexNow, crawler access, and cannibalization gates. Use whenever the user mentions Sent2X SEO, GEO, 曝光, 点击率, 流量, llms.txt…"
+    },
+    {
+      "id": "alexsignal-daily-blog",
+      "name": "alexsignal-daily-blog",
+      "group": "02-alexsignal-博客",
+      "path": "skills/vault/02-alexsignal-博客/alexsignal-daily-blog/SKILL.md",
+      "aliases": [
+        "alexsignal-daily-blog",
+        "alexsignaldailyblog"
+      ],
+      "references": 0,
+      "description": "Daily local job for alexsignal.com, run manually by Lucy. Read GSC, GA4, Bing AI Performance and the Sent2X admin stats through ego lite first, harvest clicks and playbook conversions on pages Google already shows, fix c…"
+    },
+    {
+      "id": "baoyu-xhs-images",
+      "name": "baoyu-xhs-images",
+      "group": "03-小红书-内容",
+      "path": "skills/vault/03-小红书-内容/baoyu-xhs-images/SKILL.md",
+      "aliases": [
+        "baoyu-xhs-images",
+        "baoyuxhsimages"
+      ],
+      "references": 22,
+      "description": "Generates Xiaohongshu (Little Red Book) infographic series with 11 visual styles and 8 layouts. Breaks content into 1-10 cartoon-style images optimized for XHS engagement. Use when user mentions \"小红书图片\", \"XHS images\", \"R…"
+    },
+    {
+      "id": "psych-lesson-pack",
+      "name": "psych-lesson-pack",
+      "group": "03-小红书-内容",
+      "path": "skills/vault/03-小红书-内容/psych-lesson-pack/SKILL.md",
+      "aliases": [
+        "psych-lesson-pack",
+        "psychlessonpack"
+      ],
+      "references": 0,
+      "description": ">- Deprecated name. Use pptgen. Builds a sellable Chinese mental-health lesson PPT pack. Triggers: 心理课, 心理健康课, 开学心理第一课, 团体辅导课件, 备课热点, remaking a teacher PPT, 课堂资料包, PPT资源包, 商品运营包, 小红书运营资料."
+    },
+    {
+      "id": "xhs-banhui-scan",
+      "name": "xhs-banhui-scan",
+      "group": "03-小红书-内容",
+      "path": "skills/vault/03-小红书-内容/xhs-banhui-scan/SKILL.md",
+      "aliases": [
+        "xhs-banhui-scan",
+        "xhsbanhuiscan"
+      ],
+      "references": 0,
+      "description": "搜小红书课件热点并给出可跟单选品。浏览器首选 ego lite（macOS）；没有 ego 时用用户贴的数字/截图或 Cursor 内置浏览器。不用 OpenClaw、不用 Playwright。用户提到搜索热点、跟单、主题班会ppt、班会课件、班干部、家长会、开学第一课、备课热销、发布商品、商品贴纸时必须使用。目的是找正在热的班主任课件场景，交给 pptgen 做成课件包上架。选品看收藏和评论，不看赞。未登录只提醒扫码。\" user-…"
+    },
+    {
+      "id": "xiaohongshu-ops",
+      "name": "xiaohongshu-ops",
+      "group": "03-小红书-内容",
+      "path": "skills/vault/03-小红书-内容/xiaohongshu-ops/SKILL.md",
+      "aliases": [
+        "xiaohongshu-ops",
+        "xiaohongshuops"
+      ],
+      "references": 0,
+      "description": "小红书相关操作，覆盖账号定位、选题研究、内容生产、发布执行与复盘修复的小红书全链路运营技能。凡是小红书的浏览/搜索/发布/评论任务，默认必须使用 OpenClaw 内置浏览器流程并指定 profile=\\\"openclaw\\\"；除非用户明确要求，否则不要使用系统 open 或外部浏览器。"
+    },
+    {
+      "id": "app-store-optimization",
+      "name": "app-store-optimization",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/app-store-optimization/SKILL.md",
+      "aliases": [
+        "app-store-optimization",
+        "appstoreoptimization"
+      ],
+      "references": 2,
+      "description": "Optimize App Store product pages for search visibility and conversion. Use for App Store Optimization (ASO), keyword research, app name/subtitle/keyword-field strategy, conversion-focused descriptions and promotional tex…"
+    },
+    {
+      "id": "app-store-review",
+      "name": "app-store-review",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/app-store-review/SKILL.md",
+      "aliases": [
+        "app-store-review",
+        "appstorereview"
+      ],
+      "references": 2,
+      "description": "Audits App Store submission readiness and rejection risk across current review guidelines, PrivacyInfo.xcprivacy and required-reason APIs, privacy labels, ATT, StoreKit payments, metadata, entitlements, widgets, and Live…"
+    },
+    {
+      "id": "app-store-screenshots",
+      "name": "app-store-screenshots",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/app-store-screenshots/SKILL.md",
+      "aliases": [
+        "app-store-screenshots",
+        "appstorescreenshots"
+      ],
+      "references": 0,
+      "description": "Use when building App Store or Google Play screenshot pages, generating exportable marketing screenshots for iOS and/or Android apps, or scaffolding a screenshot editor with Next.js. Triggers on app store, play store, sc…"
+    },
+    {
+      "id": "apple-business-connect",
+      "name": "apple-business-connect",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/apple-business-connect/SKILL.md",
+      "aliases": [
+        "apple-business-connect",
+        "applebusinessconnect"
+      ],
+      "references": 0,
+      "description": "When the user wants to optimize their Apple Maps listing, set up Apple Business Connect, or improve visibility in Apple's ecosystem. Also use when the user mentions \"Apple Maps,\" \"Apple Business Connect,\" \"Siri local,\" \"…"
+    },
+    {
+      "id": "apple-design",
+      "name": "apple-design",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/apple-design/SKILL.md",
+      "aliases": [
+        "apple-design",
+        "appledesign"
+      ],
+      "references": 0,
+      "description": "Apple's approach to interface design and fluid, physical motion, translated for the web. Use when building or reviewing gesture-driven UI, spring animations, drag/swipe/sheet interactions, momentum and interruptible tran…"
+    },
+    {
+      "id": "appllama-app-design-skill",
+      "name": "appllama-app-design-skill",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/appllama-app-design-skill/SKILL.md",
+      "aliases": [
+        "appllama-app-design-skill",
+        "appllamaappdesignskill"
+      ],
+      "references": 5,
+      "description": "Build native-feeling, benchmark-quality mobile app screens (Expo / React Native). Use when designing or implementing any mobile UI — screens, flows, onboarding, paywalls, tab bars, sheets, settings, empty states — or whe…"
+    },
+    {
+      "id": "asc-cli-usage",
+      "name": "asc-cli-usage",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/asc-cli-usage/SKILL.md",
+      "aliases": [
+        "asc-cli-usage",
+        "asccliusage"
+      ],
+      "references": 0,
+      "description": "Guidance for using asc cli in this repo (flags, output formats, pagination, auth, and discovery). Use when asked to run or design asc commands or interact with App Store Connect via the CLI."
+    },
+    {
+      "id": "asc-localize-metadata",
+      "name": "asc-localize-metadata",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/asc-localize-metadata/SKILL.md",
+      "aliases": [
+        "asc-localize-metadata",
+        "asclocalizemetadata"
+      ],
+      "references": 0,
+      "description": "Automatically translate and sync App Store metadata (description, keywords, what's new, subtitle) to multiple languages using LLM translation and asc CLI. Use when asked to localize an app's App Store listing, translate …"
+    },
+    {
+      "id": "asc-metadata-sync",
+      "name": "asc-metadata-sync",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/asc-metadata-sync/SKILL.md",
+      "aliases": [
+        "asc-metadata-sync",
+        "ascmetadatasync"
+      ],
+      "references": 0,
+      "description": "Sync, validate, and apply App Store metadata with the current asc canonical metadata workflow. Use when updating metadata, localizations, keywords, or migrating legacy fastlane metadata."
+    },
+    {
+      "id": "asc-release-flow",
+      "name": "asc-release-flow",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/asc-release-flow/SKILL.md",
+      "aliases": [
+        "asc-release-flow",
+        "ascreleaseflow"
+      ],
+      "references": 1,
+      "description": "Orchestrate App Store releases with asc, including staging a version, uploading or building an artifact, publishing, and submitting for review. Use when the user wants to prepare or execute a release. Keep Game Center it…"
+    },
+    {
+      "id": "asc-signing-setup",
+      "name": "asc-signing-setup",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/asc-signing-setup/SKILL.md",
+      "aliases": [
+        "asc-signing-setup",
+        "ascsigningsetup"
+      ],
+      "references": 0,
+      "description": "Set up bundle IDs, capabilities, signing certificates, provisioning profiles, and encrypted signing sync with the asc cli. Use when onboarding a new app, rotating signing assets, or sharing them across a team."
+    },
+    {
+      "id": "asc-submission-health",
+      "name": "asc-submission-health",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/asc-submission-health/SKILL.md",
+      "aliases": [
+        "asc-submission-health",
+        "ascsubmissionhealth"
+      ],
+      "references": 3,
+      "description": "Diagnose App Store submission blockers and operate review health with asc, including readiness validation, repair routing, status monitoring, cancellation, and retry decisions. Use when validation fails, a version is not…"
+    },
+    {
+      "id": "improve-animations",
+      "name": "improve-animations",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/improve-animations/SKILL.md",
+      "aliases": [
+        "improve-animations",
+        "improveanimations"
+      ],
+      "references": 0,
+      "description": "Survey a codebase's animation and motion code as a senior motion advisor, then produce a prioritized audit and self-contained implementation plans for other agents (or cheaper models) to execute. Read-only on source code…"
+    },
+    {
+      "id": "iosship",
+      "name": "iosship",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/iosship/SKILL.md",
+      "aliases": [
+        "iosship"
+      ],
+      "references": 0,
+      "description": ">- Ship an iOS or Mac app to the App Store, Lucy's way. iOS ship flow: Appllama reference study, Emil apple-design interaction, SwiftUI Agent code, then App Store listing, screenshots, cover, pricing, and review submit. …"
+    },
+    {
+      "id": "review-animations",
+      "name": "review-animations",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/review-animations/SKILL.md",
+      "aliases": [
+        "review-animations",
+        "reviewanimations"
+      ],
+      "references": 0,
+      "description": "Reviews animation and motion code against a high craft bar derived from Emil Kowalski's design engineering philosophy. Default to flagging; approval is earned. disable-model-invocation: true"
+    },
+    {
+      "id": "swiftui-pro",
+      "name": "swiftui-pro",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/swiftui-pro/SKILL.md",
+      "aliases": [
+        "swiftui-pro",
+        "swiftuipro"
+      ],
+      "references": 9,
+      "description": "Comprehensively reviews SwiftUI code for best practices on modern APIs, maintainability, and performance. Use when reading, writing, or reviewing SwiftUI projects."
+    },
+    {
+      "id": "write-swift",
+      "name": "write-swift",
+      "group": "04-App-Store-iOS",
+      "path": "skills/vault/04-App-Store-iOS/write-swift/SKILL.md",
+      "aliases": [
+        "write-swift",
+        "writeswift"
+      ],
+      "references": 0,
+      "description": "How to write modern Swift well — modeling with value types, Swift 6 data-race safety and approachable concurrency (@concurrent, main-actor-by-default, actors, task groups), protocols and generics (some vs any), API desig…"
+    },
+    {
+      "id": "blog",
+      "name": "blog",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog/SKILL.md",
+      "aliases": [
+        "blog"
+      ],
+      "references": 22,
+      "description": "> Full-lifecycle blog engine with 31 sub-skills, 12 templates, 100-point scoring, and 5 agents. Routes requests to the right sub-skill: writing, rewriting, analysis, outlines, audits, schema, charts, images, repurposing,…"
+    },
+    {
+      "id": "blog-analyze",
+      "name": "blog-analyze",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-analyze/SKILL.md",
+      "aliases": [
+        "blog-analyze",
+        "bloganalyze"
+      ],
+      "references": 0,
+      "description": "> Audit and score blog posts on a 5-category 100-point scoring system covering content quality, SEO optimization, E-E-A-T signals, technical elements, and AI citation readiness. Includes advisory editorial style diagnost…"
+    },
+    {
+      "id": "blog-audio",
+      "name": "blog-audio",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-audio/SKILL.md",
+      "aliases": [
+        "blog-audio",
+        "blogaudio"
+      ],
+      "references": 1,
+      "description": "> Generate audio narration of blog posts using Google Gemini TTS. Supports summary narration, full article read-aloud, and two-speaker podcast/dialogue mode with 30 voice options. Outputs MP3 with HTML5 audio embed code.…"
+    },
+    {
+      "id": "blog-audit",
+      "name": "blog-audit",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-audit/SKILL.md",
+      "aliases": [
+        "blog-audit",
+        "blogaudit"
+      ],
+      "references": 0,
+      "description": "> Full-site blog health assessment scanning all blog files for quality scores, orphan pages, topic cannibalization, stale content, and AI citation readiness. Runs canonical batch analysis before site-wide checks. Produce…"
+    },
+    {
+      "id": "blog-brand",
+      "name": "blog-brand",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-brand/SKILL.md",
+      "aliases": [
+        "blog-brand",
+        "blogbrand"
+      ],
+      "references": 0,
+      "description": "> Establish durable brand and voice context for cross-skill consumption. Generates BRAND.md (audience, positioning, do/don't editorial rules, taboo phrases, competitor differentiation) and VOICE.md (existing persona JSON…"
+    },
+    {
+      "id": "blog-brief",
+      "name": "blog-brief",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-brief/SKILL.md",
+      "aliases": [
+        "blog-brief",
+        "blogbrief"
+      ],
+      "references": 0,
+      "description": "> Generate detailed content briefs for blog posts with target keywords, content outlines, competitive analysis, recommended statistics, image and chart suggestions, word count targets, internal linking architecture, temp…"
+    },
+    {
+      "id": "blog-calendar",
+      "name": "blog-calendar",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-calendar/SKILL.md",
+      "aliases": [
+        "blog-calendar",
+        "blogcalendar"
+      ],
+      "references": 0,
+      "description": "> Generate editorial calendars for blogs with topic clusters, publishing schedules, material-change reviews, update plans, seasonal opportunities, content mix formula, template integration, and distribution scheduling. P…"
+    },
+    {
+      "id": "blog-cannibalization",
+      "name": "blog-cannibalization",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-cannibalization/SKILL.md",
+      "aliases": [
+        "blog-cannibalization",
+        "blogcannibalization"
+      ],
+      "references": 0,
+      "description": "> Detect keyword cannibalization across blog posts by extracting primary keywords from titles and headings, clustering semantically similar targets, and flagging posts competing for the same search intent. Supports local…"
+    },
+    {
+      "id": "blog-chart",
+      "name": "blog-chart",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-chart/SKILL.md",
+      "aliases": [
+        "blog-chart",
+        "blogchart"
+      ],
+      "references": 0,
+      "description": "> Generate dark-mode-compatible inline SVG data visualization charts for blog posts. Supports horizontal bar, grouped bar, donut, line, lollipop, area, and radar charts with automatic platform detection (HTML vs JSX/MDX)…"
+    },
+    {
+      "id": "blog-cluster",
+      "name": "blog-cluster",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-cluster/SKILL.md",
+      "aliases": [
+        "blog-cluster",
+        "blogcluster"
+      ],
+      "references": 3,
+      "description": "> Semantic topic cluster planning and automated execution engine for claude-blog. Performs SERP-based keyword research, groups keywords by search intent and SERP overlap, builds a hub-and-spoke cluster architecture, gene…"
+    },
+    {
+      "id": "blog-decay",
+      "name": "blog-decay",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-decay/SKILL.md",
+      "aliases": [
+        "blog-decay",
+        "blogdecay"
+      ],
+      "references": 0,
+      "description": "Detect content decay from Google Search Console exports by comparing current and previous page performance, flagging quarter-over-quarter traffic drops, dropped pages, and refresh, consolidate, prune, or query-shift acti…"
+    },
+    {
+      "id": "blog-discourse",
+      "name": "blog-discourse",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-discourse/SKILL.md",
+      "aliases": [
+        "blog-discourse",
+        "blogdiscourse"
+      ],
+      "references": 0,
+      "description": "> Research what people are actually saying about a topic in the last 30 days across Reddit, X / Twitter, YouTube, Hacker News, dev.to, Medium, and other public discourse platforms. API-free; uses WebSearch with platform-…"
+    },
+    {
+      "id": "blog-factcheck",
+      "name": "blog-factcheck",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-factcheck/SKILL.md",
+      "aliases": [
+        "blog-factcheck",
+        "blogfactcheck"
+      ],
+      "references": 0,
+      "description": "> Verify statistics and claims in blog posts by fetching cited source URLs and checking if the claimed data actually appears on the page. Extracts all load-bearing claims (statistics, product or policy claims, ranking an…"
+    },
+    {
+      "id": "blog-flow",
+      "name": "blog-flow",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-flow/SKILL.md",
+      "aliases": [
+        "blog-flow",
+        "blogflow"
+      ],
+      "references": 33,
+      "description": "> FLOW framework integration for bloggers. Evidence-led content workflow using the Find, Optimize, Win loop with stage-specific AI prompts from the FLOW knowledge base (30 blog-applicable prompts, CC BY 4.0). Use when us…"
+    },
+    {
+      "id": "blog-geo",
+      "name": "blog-geo",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-geo/SKILL.md",
+      "aliases": [
+        "blog-geo",
+        "bloggeo"
+      ],
+      "references": 0,
+      "description": "> AI citation readiness audit as part of SEO, covering classic Google search and AI search surfaces together. Use whenever the user wants their content to rank or be cited in ChatGPT, Perplexity, Claude, Gemini, Copilot,…"
+    },
+    {
+      "id": "blog-google",
+      "name": "blog-google",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-google/SKILL.md",
+      "aliases": [
+        "blog-google",
+        "bloggoogle"
+      ],
+      "references": 4,
+      "description": "> Google API integration for blog performance: PageSpeed Insights, CrUX Core Web Vitals with 25-week history, Search Console performance, URL Inspection, Indexing API, GA4 organic traffic, NLP entity analysis for E-E-A-T…"
+    },
+    {
+      "id": "blog-image",
+      "name": "blog-image",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-image/SKILL.md",
+      "aliases": [
+        "blog-image",
+        "blogimage"
+      ],
+      "references": 3,
+      "description": "> AI image generation and editing for blog content powered by Gemini via MCP. Generates hero images, inline illustrations, social preview cards, and OG images, and edits existing ones. Supports 6 domain modes (Editorial,…"
+    },
+    {
+      "id": "blog-locale-audit",
+      "name": "blog-locale-audit",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-locale-audit/SKILL.md",
+      "aliases": [
+        "blog-locale-audit",
+        "bloglocaleaudit"
+      ],
+      "references": 0,
+      "description": "> Audit a directory of multilingual blog content for completeness, consistency, hreflang correctness, meta-tag parity, and freshness. Builds a translation coverage matrix, flags stale translations, validates hreflang and…"
+    },
+    {
+      "id": "blog-localize",
+      "name": "blog-localize",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-localize/SKILL.md",
+      "aliases": [
+        "blog-localize",
+        "bloglocalize"
+      ],
+      "references": 0,
+      "description": "> Deep cultural adaptation of translated blog posts. Run after blog-translate completes. Goes beyond translation to swap brand examples, adapt CTAs, substitute legal references, localize statistic sources where possible,…"
+    },
+    {
+      "id": "blog-multilingual",
+      "name": "blog-multilingual",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-multilingual/SKILL.md",
+      "aliases": [
+        "blog-multilingual",
+        "blogmultilingual"
+      ],
+      "references": 0,
+      "description": "> One-command multilingual blog creation. Writes a blog post, translates it into user-specified languages, applies cultural adaptation, and emits hreflang tags, sitemap entries, and a CMS-ready language map. The complete…"
+    },
+    {
+      "id": "blog-notebooklm",
+      "name": "blog-notebooklm",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-notebooklm/SKILL.md",
+      "aliases": [
+        "blog-notebooklm",
+        "blognotebooklm"
+      ],
+      "references": 2,
+      "description": "> Query Google NotebookLM notebooks for source-grounded, citation-backed answers from user-uploaded documents. Manages notebook library, handles Google authentication, and supports smart discovery. Works standalone via /…"
+    },
+    {
+      "id": "blog-outline",
+      "name": "blog-outline",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-outline/SKILL.md",
+      "aliases": [
+        "blog-outline",
+        "blogoutline"
+      ],
+      "references": 0,
+      "description": "> SERP-informed outline generation with H2/H3 heading hierarchy, competitive content gap analysis, section-by-section word count targets, chart and image placement markers, optional FAQ question planning, and internal li…"
+    },
+    {
+      "id": "blog-persona",
+      "name": "blog-persona",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-persona/SKILL.md",
+      "aliases": [
+        "blog-persona",
+        "blogpersona"
+      ],
+      "references": 0,
+      "description": "> Create and manage writing personas with NNGroup 4-dimension tone framework (Funny-Serious, Formal-Casual, Respectful-Irreverent, Enthusiastic-Matter-of-fact). Personas define readability targets, sentence length distri…"
+    },
+    {
+      "id": "blog-repurpose",
+      "name": "blog-repurpose",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-repurpose/SKILL.md",
+      "aliases": [
+        "blog-repurpose",
+        "blogrepurpose"
+      ],
+      "references": 0,
+      "description": "> Repurpose blog posts for social media, email, video, podcast, and community channels. Generates Twitter/X threads, LinkedIn posts and articles, Threads, Bluesky, TikTok, Instagram, YouTube Shorts and long-form scripts,…"
+    },
+    {
+      "id": "blog-rewrite",
+      "name": "blog-rewrite",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-rewrite/SKILL.md",
+      "aliases": [
+        "blog-rewrite",
+        "blogrewrite"
+      ],
+      "references": 0,
+      "description": "> Rewrite and optimize existing blog posts for Google SEO (May 2026 Core Update, E-E-A-T) and AI citation visibility as one SEO discipline. For AI-citation-only audit (no Google work), use blog-geo instead. Replaces fabr…"
+    },
+    {
+      "id": "blog-schema",
+      "name": "blog-schema",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-schema/SKILL.md",
+      "aliases": [
+        "blog-schema",
+        "blogschema"
+      ],
+      "references": 0,
+      "description": "> Generate complete JSON-LD schema markup for blog posts with Article/BlogPosting, Person, Organization, BreadcrumbList, ImageObject, and optional FAQPage. Validates against Google requirements and warns about deprecated…"
+    },
+    {
+      "id": "blog-seo-check",
+      "name": "blog-seo-check",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-seo-check/SKILL.md",
+      "aliases": [
+        "blog-seo-check",
+        "blogseocheck"
+      ],
+      "references": 0,
+      "description": "> Post-writing SEO validation with pass/fail checklist covering title tag length and keyword placement, meta description quality, heading hierarchy and keyword density, internal/external link audit with anchor text analy…"
+    },
+    {
+      "id": "blog-strategy",
+      "name": "blog-strategy",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-strategy/SKILL.md",
+      "aliases": [
+        "blog-strategy",
+        "blogstrategy"
+      ],
+      "references": 0,
+      "description": "> Blog strategy development including topic cluster architecture with hub-and-spoke design, audience mapping, competitive landscape analysis, AI citation surface strategy across ChatGPT/Perplexity/AI Overviews, distribut…"
+    },
+    {
+      "id": "blog-style",
+      "name": "blog-style",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-style/SKILL.md",
+      "aliases": [
+        "blog-style",
+        "blogstyle"
+      ],
+      "references": 0,
+      "description": "Learn author writing style from 5 to 10 existing blog posts and generate a voice profile for /blog style learn, VOICE.md, blog-persona, and blog-write when users ask to infer tone, analyze author voice, learn style, or b…"
+    },
+    {
+      "id": "blog-taxonomy",
+      "name": "blog-taxonomy",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-taxonomy/SKILL.md",
+      "aliases": [
+        "blog-taxonomy",
+        "blogtaxonomy"
+      ],
+      "references": 0,
+      "description": "> Extract, suggest, and sync tags and categories for blog posts across all major CMS platforms. Supports WordPress REST API, Shopify GraphQL, Ghost Content API, Strapi REST/GraphQL, and Sanity GROQ. Generates tag suggest…"
+    },
+    {
+      "id": "blog-translate",
+      "name": "blog-translate",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-translate/SKILL.md",
+      "aliases": [
+        "blog-translate",
+        "blogtranslate"
+      ],
+      "references": 2,
+      "description": "> Translate existing blog posts into one or more target languages with SEO-optimized localization. Produces native-quality translations that preserve markdown structure, frontmatter, schema JSON-LD, image and chart embed…"
+    },
+    {
+      "id": "blog-write",
+      "name": "blog-write",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/blog-write/SKILL.md",
+      "aliases": [
+        "blog-write",
+        "blogwrite"
+      ],
+      "references": 1,
+      "description": "> Write new blog articles from scratch optimized for Google rankings and AI citations. Generates full articles with template selection, answer-first formatting, Key Takeaways summary box, information gain markers, eviden…"
+    },
+    {
+      "id": "brief",
+      "name": "brief",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/brief/SKILL.md",
+      "aliases": [
+        "brief"
+      ],
+      "references": 0,
+      "description": "Manages persistent work state (briefs) for local SEO engagements. Automatically load this skill when starting work on a specific business or location, when a user says \"resume,\" \"continue,\" \"pick up where we left off,\" o…"
+    },
+    {
+      "id": "claude-blog-brain",
+      "name": "claude-blog-brain",
+      "group": "05-博客写作包",
+      "path": "skills/vault/05-博客写作包/claude-blog-brain/SKILL.md",
+      "aliases": [
+        "claude-blog-brain",
+        "claudeblogbrain"
+      ],
+      "references": 22,
+      "description": "> Scaffold and operate Claude Blog Brain, a source-cited Obsidian brain for blog content creation, optimization, and management dual-optimized for Google rankings (E-E-A-T, the 2026 core updates) and AI citations (GEO/AE…"
+    },
+    {
+      "id": "ahrefs-tool",
+      "name": "ahrefs-tool",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/ahrefs-tool/SKILL.md",
+      "aliases": [
+        "ahrefs-tool",
+        "ahrefstool"
+      ],
+      "references": 0,
+      "description": "When the user wants backlink analysis, link gap analysis, competitor link profiles, referring domain data, or link building research. Trigger on \"backlinks,\" \"who links to,\" \"link profile,\" \"referring domains,\" \"link gap…"
+    },
+    {
+      "id": "ai-local-search",
+      "name": "ai-local-search",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/ai-local-search/SKILL.md",
+      "aliases": [
+        "ai-local-search",
+        "ailocalsearch"
+      ],
+      "references": 0,
+      "description": "When the user wants to optimize for AI-powered local search results including Google AI Overviews, AI Mode, ChatGPT, Gemini, Perplexity, or Grok. Also use when the user mentions \"AI Overviews,\" \"AI search local,\" \"ChatGP…"
+    },
+    {
+      "id": "bing-places",
+      "name": "bing-places",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/bing-places/SKILL.md",
+      "aliases": [
+        "bing-places",
+        "bingplaces"
+      ],
+      "references": 0,
+      "description": "When the user wants to optimize their Bing Maps listing, set up Bing Places for Business, or improve visibility in Microsoft's search ecosystem. Also use when the user mentions \"Bing Places,\" \"Bing Maps,\" \"Bing local,\" \"…"
+    },
+    {
+      "id": "brightlocal-tool",
+      "name": "brightlocal-tool",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/brightlocal-tool/SKILL.md",
+      "aliases": [
+        "brightlocal-tool",
+        "brightlocaltool"
+      ],
+      "references": 0,
+      "description": "When the user wants citation audits, citation building, review monitoring across platforms, GBP audit scoring, or white-label local SEO reports. Trigger on \"citation audit,\" \"check my citations,\" \"NAP consistency,\" \"wher…"
+    },
+    {
+      "id": "client-deliverables",
+      "name": "client-deliverables",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/client-deliverables/SKILL.md",
+      "aliases": [
+        "client-deliverables",
+        "clientdeliverables"
+      ],
+      "references": 0,
+      "description": "> When the user needs to create a client-facing document such as an SEO audit, proposal, scope of work, competitive analysis report, onboarding document, or market intelligence report. Also use when the user mentions \"au…"
+    },
+    {
+      "id": "dataforseo-tool",
+      "name": "dataforseo-tool",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/dataforseo-tool/SKILL.md",
+      "aliases": [
+        "dataforseo-tool",
+        "dataforseotool"
+      ],
+      "references": 0,
+      "description": "When the user needs bulk SERP data, local pack data at scale, keyword volumes for hundreds of terms at once, Google Maps business data programmatically, or is building custom local SEO tools/dashboards. Trigger on \"bulk …"
+    },
+    {
+      "id": "dispatch",
+      "name": "dispatch",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/dispatch/SKILL.md",
+      "aliases": [
+        "dispatch"
+      ],
+      "references": 0,
+      "description": "Quick-reference for which skills to load together based on what the user is asking. Load this FIRST when a local SEO request comes in and you're unsure which skills to activate. This prevents loading all skills when you …"
+    },
+    {
+      "id": "gbp-api-automation",
+      "name": "gbp-api-automation",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/gbp-api-automation/SKILL.md",
+      "aliases": [
+        "gbp-api-automation",
+        "gbpapiautomation"
+      ],
+      "references": 0,
+      "description": "When the user wants to programmatically manage Google Business Profiles at scale via API, automate GBP updates, build GBP management tools, or integrate GBP data into their systems. Also use when the user mentions \"GBP A…"
+    },
+    {
+      "id": "gbp-optimization",
+      "name": "gbp-optimization",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/gbp-optimization/SKILL.md",
+      "aliases": [
+        "gbp-optimization",
+        "gbpoptimization"
+      ],
+      "references": 0,
+      "description": "When the user wants to set up, optimize, or manage a Google Business Profile, or improve visibility in Google's local map pack. Also use when the user mentions \"GBP,\" \"Google Business Profile,\" \"Google My Business,\" \"GMB…"
+    },
+    {
+      "id": "gbp-posts",
+      "name": "gbp-posts",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/gbp-posts/SKILL.md",
+      "aliases": [
+        "gbp-posts",
+        "gbpposts"
+      ],
+      "references": 0,
+      "description": "When the user wants to create, schedule, or optimize Google Business Profile posts. Also use when the user mentions \"GBP posts,\" \"Google posts,\" \"GMB updates,\" \"business profile posts,\" \"what should I post on Google,\" or…"
+    },
+    {
+      "id": "gbp-suspension-recovery",
+      "name": "gbp-suspension-recovery",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/gbp-suspension-recovery/SKILL.md",
+      "aliases": [
+        "gbp-suspension-recovery",
+        "gbpsuspensionrecovery"
+      ],
+      "references": 0,
+      "description": "When the user's Google Business Profile has been suspended, disabled, or is under review. Also use when the user mentions \"suspended,\" \"GBP suspension,\" \"listing disabled,\" \"profile removed,\" \"reinstatement,\" \"Google sus…"
+    },
+    {
+      "id": "geo",
+      "name": "geo",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo/SKILL.md",
+      "aliases": [
+        "geo"
+      ],
+      "references": 0,
+      "description": "> GEO-first SEO analysis tool. Optimizes websites for AI-powered search engines (ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews) while maintaining traditional SEO foundations. Performs full GEO audits, citabili…"
+    },
+    {
+      "id": "geo-audit",
+      "name": "geo-audit",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-audit/SKILL.md",
+      "aliases": [
+        "geo-audit",
+        "geoaudit"
+      ],
+      "references": 0,
+      "description": "Full website GEO+SEO audit with parallel subagent delegation. Orchestrates a comprehensive Generative Engine Optimization audit across AI citability, platform analysis, technical infrastructure, content quality, and sche…"
+    },
+    {
+      "id": "geo-brand-mentions",
+      "name": "geo-brand-mentions",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-brand-mentions/SKILL.md",
+      "aliases": [
+        "geo-brand-mentions",
+        "geobrandmentions"
+      ],
+      "references": 0,
+      "description": "Brand mention and authority scanner for AI visibility. Analyzes brand presence across platforms that AI models rely on for entity recognition and citation decisions. Produces a Brand Authority Score (0-100) with platform…"
+    },
+    {
+      "id": "geo-citability",
+      "name": "geo-citability",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-citability/SKILL.md",
+      "aliases": [
+        "geo-citability",
+        "geocitability"
+      ],
+      "references": 0,
+      "description": "AI citability scoring and optimization. Analyzes web page content to determine how likely AI systems (ChatGPT, Claude, Perplexity, Gemini) are to cite or quote passages from the page. Provides a citability score (0-100) …"
+    },
+    {
+      "id": "geo-cold-start",
+      "name": "geo-cold-start",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-cold-start/SKILL.md",
+      "aliases": [
+        "geo-cold-start",
+        "geocoldstart"
+      ],
+      "references": 3,
+      "description": "Generate blog posts, articles, guides, and FAQ pages optimized for AI citation (ChatGPT, Perplexity, Gemini, AI Overviews). Optimizes for citation share, not keyword rank. Also handles llms.txt generation, site-level GEO…"
+    },
+    {
+      "id": "geo-compare",
+      "name": "geo-compare",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-compare/SKILL.md",
+      "aliases": [
+        "geo-compare",
+        "geocompare"
+      ],
+      "references": 0,
+      "description": "> Monthly delta tracking and progress reporting for GEO clients. Compares two GEO audits (baseline vs. current), calculates score improvements across all categories, tracks action item completion, and generates a \"here's…"
+    },
+    {
+      "id": "geo-content",
+      "name": "geo-content",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-content/SKILL.md",
+      "aliases": [
+        "geo-content",
+        "geocontent"
+      ],
+      "references": 0,
+      "description": "Content quality and E-E-A-T assessment for AI citability — evaluate experience, expertise, authoritativeness, trustworthiness, and content structure"
+    },
+    {
+      "id": "geo-crawlers",
+      "name": "geo-crawlers",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-crawlers/SKILL.md",
+      "aliases": [
+        "geo-crawlers",
+        "geocrawlers"
+      ],
+      "references": 0,
+      "description": "AI crawler access analysis. Checks robots.txt, meta tags, and HTTP headers to determine which AI crawlers can access the site. Provides a complete access map and recommendations for maximizing AI visibility while maintai…"
+    },
+    {
+      "id": "geo-llmstxt",
+      "name": "geo-llmstxt",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-llmstxt/SKILL.md",
+      "aliases": [
+        "geo-llmstxt",
+        "geollmstxt"
+      ],
+      "references": 0,
+      "description": "Analyzes and generates llms.txt files -- the emerging standard for helping AI systems understand website structure and content. Can validate existing llms.txt files or generate new ones from scratch by crawling the site.…"
+    },
+    {
+      "id": "geo-platform-optimizer",
+      "name": "geo-platform-optimizer",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-platform-optimizer/SKILL.md",
+      "aliases": [
+        "geo-platform-optimizer",
+        "geoplatformoptimizer"
+      ],
+      "references": 0,
+      "description": "Platform-specific AI search optimization — audit and optimize for Google AI Overviews, ChatGPT, Perplexity, Gemini, and Bing Copilot individually"
+    },
+    {
+      "id": "geo-proposal",
+      "name": "geo-proposal",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-proposal/SKILL.md",
+      "aliases": [
+        "geo-proposal",
+        "geoproposal"
+      ],
+      "references": 0,
+      "description": "> Auto-generate a professional, client-ready GEO service proposal from audit data. Creates a full proposal in markdown and PDF including executive summary, findings, recommended service packages (Basic/Standard/Premium),…"
+    },
+    {
+      "id": "geo-prospect",
+      "name": "geo-prospect",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-prospect/SKILL.md",
+      "aliases": [
+        "geo-prospect",
+        "geoprospect"
+      ],
+      "references": 0,
+      "description": "> CRM-lite for managing GEO agency prospects and clients. Track leads through the full sales pipeline: Lead → Qualified → Proposal Sent → Won → Lost. Store audit history, notes, deal values, and generate pipeline summari…"
+    },
+    {
+      "id": "geo-report",
+      "name": "geo-report",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-report/SKILL.md",
+      "aliases": [
+        "geo-report",
+        "georeport"
+      ],
+      "references": 0,
+      "description": "Generate a professional, client-facing GEO report combining all audit results into a single deliverable with scores, findings, and prioritized actions"
+    },
+    {
+      "id": "geo-report-pdf",
+      "name": "geo-report-pdf",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-report-pdf/SKILL.md",
+      "aliases": [
+        "geo-report-pdf",
+        "georeportpdf"
+      ],
+      "references": 0,
+      "description": "Generate a professional PDF report from a GEO audit using pandoc + Chrome headless. Converts GEO-AUDIT-REPORT.md into a styled, client-ready PDF with a cover page, color-coded score tables, severity-tagged findings, and …"
+    },
+    {
+      "id": "geo-schema",
+      "name": "geo-schema",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-schema/SKILL.md",
+      "aliases": [
+        "geo-schema",
+        "geoschema"
+      ],
+      "references": 0,
+      "description": "Schema.org structured data audit and generation optimized for AI discoverability — detect, validate, and generate JSON-LD markup"
+    },
+    {
+      "id": "geo-technical",
+      "name": "geo-technical",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-technical/SKILL.md",
+      "aliases": [
+        "geo-technical",
+        "geotechnical"
+      ],
+      "references": 0,
+      "description": "Technical SEO audit with GEO-specific checks — crawlability, indexability, security, performance, SSR, and AI crawler access"
+    },
+    {
+      "id": "geo-update",
+      "name": "geo-update",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geo-update/SKILL.md",
+      "aliases": [
+        "geo-update",
+        "geoupdate"
+      ],
+      "references": 0,
+      "description": "Pull the latest GEO-SEO skill updates from the upstream repository. Compares installed files against the latest release, shows what changed, and updates all skills, agents, scripts, and schema templates in place. allowed…"
+    },
+    {
+      "id": "geogrid-analysis",
+      "name": "geogrid-analysis",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/geogrid-analysis/SKILL.md",
+      "aliases": [
+        "geogrid-analysis",
+        "geogridanalysis"
+      ],
+      "references": 0,
+      "description": "When the user wants to analyze local ranking data using geogrid scans, interpret map pack rankings across a geographic area, or understand ARP/ATRP/SoLV metrics. Also use when the user mentions \"geogrid,\" \"rank grid,\" \"l…"
+    },
+    {
+      "id": "google-analytics-tool",
+      "name": "google-analytics-tool",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/google-analytics-tool/SKILL.md",
+      "aliases": [
+        "google-analytics-tool",
+        "googleanalyticstool"
+      ],
+      "references": 0,
+      "description": "When the user wants traffic data, conversion tracking, user behavior on location pages, GBP traffic attribution, or geographic traffic patterns. Trigger on \"Google Analytics,\" \"GA4,\" \"traffic,\" \"conversions,\" \"how many l…"
+    },
+    {
+      "id": "google-search-console-tool",
+      "name": "google-search-console-tool",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/google-search-console-tool/SKILL.md",
+      "aliases": [
+        "google-search-console-tool",
+        "googlesearchconsoletool"
+      ],
+      "references": 0,
+      "description": "When the user wants to know what queries drive traffic to their site, which pages are indexed, click-through rates, organic search performance, or technical indexing issues. Trigger on \"Search Console,\" \"GSC,\" \"what keyw…"
+    },
+    {
+      "id": "local-citations",
+      "name": "local-citations",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-citations/SKILL.md",
+      "aliases": [
+        "local-citations",
+        "localcitations"
+      ],
+      "references": 0,
+      "description": "When the user wants to build citations, fix NAP inconsistencies, manage business directory listings, or audit citation presence. Also use when the user mentions \"citations,\" \"NAP consistency,\" \"business directories,\" \"li…"
+    },
+    {
+      "id": "local-competitor-analysis",
+      "name": "local-competitor-analysis",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-competitor-analysis/SKILL.md",
+      "aliases": [
+        "local-competitor-analysis",
+        "localcompetitoranalysis"
+      ],
+      "references": 0,
+      "description": "When the user wants to analyze local search competitors, benchmark against map pack rivals, or understand why competitors outrank them. Also use when the user mentions \"competitor analysis,\" \"who's outranking me,\" \"compe…"
+    },
+    {
+      "id": "local-content-briefs",
+      "name": "local-content-briefs",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-content-briefs/SKILL.md",
+      "aliases": [
+        "local-content-briefs",
+        "localcontentbriefs"
+      ],
+      "references": 0,
+      "description": "Generate complete semantic content briefs for local SEO content — location pages, service pages, blog posts, FAQ content, and pillar pages. Use this skill when the user needs a content brief for any piece of local SEO co…"
+    },
+    {
+      "id": "local-content-strategy",
+      "name": "local-content-strategy",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-content-strategy/SKILL.md",
+      "aliases": [
+        "local-content-strategy",
+        "localcontentstrategy"
+      ],
+      "references": 0,
+      "description": "Build a complete local content strategy from keyword research output. Use this skill when the user has completed keyword research and needs to organize keywords into concept clusters, assign each cluster to the right con…"
+    },
+    {
+      "id": "local-falcon-tool",
+      "name": "local-falcon-tool",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-falcon-tool/SKILL.md",
+      "aliases": [
+        "local-falcon-tool",
+        "localfalcontool"
+      ],
+      "references": 0,
+      "description": "When the user wants to run a geogrid scan, check existing scan reports, track ranking trends over time, monitor GBP changes via Falcon Guard, or analyze reviews. Also use when the user says \"run a scan,\" \"check my rankin…"
+    },
+    {
+      "id": "local-keyword-research",
+      "name": "local-keyword-research",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-keyword-research/SKILL.md",
+      "aliases": [
+        "local-keyword-research",
+        "localkeywordresearch"
+      ],
+      "references": 0,
+      "description": "When the user wants to research keywords for a local business, find local search opportunities, build a keyword map for location pages, or understand local search intent. Also use when the user mentions \"local keywords,\"…"
+    },
+    {
+      "id": "local-landing-pages",
+      "name": "local-landing-pages",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-landing-pages/SKILL.md",
+      "aliases": [
+        "local-landing-pages",
+        "locallandingpages"
+      ],
+      "references": 0,
+      "description": "When the user wants to create location pages, service-area pages, city pages, or locally-relevant content for SEO. Also use when the user mentions \"location pages,\" \"city pages,\" \"service area pages,\" \"local landing page…"
+    },
+    {
+      "id": "local-link-building",
+      "name": "local-link-building",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-link-building/SKILL.md",
+      "aliases": [
+        "local-link-building",
+        "locallinkbuilding"
+      ],
+      "references": 0,
+      "description": "When the user wants to build local backlinks, earn links from community organizations, or develop a local link building strategy. Also use when the user mentions \"local links,\" \"local backlinks,\" \"community links,\" \"spon…"
+    },
+    {
+      "id": "local-ppc-ads",
+      "name": "local-ppc-ads",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-ppc-ads/SKILL.md",
+      "aliases": [
+        "local-ppc-ads",
+        "localppcads"
+      ],
+      "references": 0,
+      "description": "When the user wants to run geographically targeted Google Ads (PPC) campaigns for a local business. Also use when the user mentions \"local PPC,\" \"geotargeted ads,\" \"radius targeting,\" \"Google Ads for local business,\" \"lo…"
+    },
+    {
+      "id": "local-reporting",
+      "name": "local-reporting",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-reporting/SKILL.md",
+      "aliases": [
+        "local-reporting",
+        "localreporting"
+      ],
+      "references": 0,
+      "description": "When the user wants to create local SEO reports, track local ranking performance, set up reporting dashboards, or communicate results to clients. Also use when the user mentions \"local SEO report,\" \"client reporting,\" \"l…"
+    },
+    {
+      "id": "local-schema",
+      "name": "local-schema",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-schema/SKILL.md",
+      "aliases": [
+        "local-schema",
+        "localschema"
+      ],
+      "references": 0,
+      "description": "When the user wants to implement LocalBusiness structured data, location schema, or local-specific JSON-LD markup. Also use when the user mentions \"local schema,\" \"LocalBusiness schema,\" \"structured data for local,\" \"JSO…"
+    },
+    {
+      "id": "local-search-ads",
+      "name": "local-search-ads",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-search-ads/SKILL.md",
+      "aliases": [
+        "local-search-ads",
+        "localsearchads"
+      ],
+      "references": 0,
+      "description": "When the user wants to run ads that appear inside the Google Maps local pack / map pack results. Also use when the user mentions \"local search ads,\" \"map pack ads,\" \"ads in the map results,\" \"local pack ads,\" \"Google Map…"
+    },
+    {
+      "id": "local-seo-audit",
+      "name": "local-seo-audit",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/local-seo-audit/SKILL.md",
+      "aliases": [
+        "local-seo-audit",
+        "localseoaudit"
+      ],
+      "references": 0,
+      "description": "When the user wants to audit, review, or diagnose a business's local search presence. Also use when the user mentions \"local SEO audit,\" \"why am I not showing up on Google Maps,\" \"local search issues,\" \"local ranking pro…"
+    },
+    {
+      "id": "localseodata-tool",
+      "name": "localseodata-tool",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/localseodata-tool/SKILL.md",
+      "aliases": [
+        "localseodata-tool",
+        "localseodatatool"
+      ],
+      "references": 0,
+      "description": "When the user wants to pull local SEO data — SERP results, local pack rankings, business profile data, reviews, citations, audits, geogrid scans, keyword research, AI visibility, competitor analysis, or any local search …"
+    },
+    {
+      "id": "lsa-ads",
+      "name": "lsa-ads",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/lsa-ads/SKILL.md",
+      "aliases": [
+        "lsa-ads",
+        "lsaads"
+      ],
+      "references": 0,
+      "description": "When the user wants help with Google Local Services Ads (LSAs), the pay-per-lead ad format with Google Guaranteed or Google Screened badges. Also use when the user mentions \"LSA,\" \"Local Services Ads,\" \"Google Guaranteed…"
+    },
+    {
+      "id": "lsa-spy-tool",
+      "name": "lsa-spy-tool",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/lsa-spy-tool/SKILL.md",
+      "aliases": [
+        "lsa-spy-tool",
+        "lsaspytool"
+      ],
+      "references": 0,
+      "description": "When the user wants to check Local Services Ads rankings, see who's ranking in LSA results, monitor LSA competitive landscape, or track LSA ranking changes. Trigger on \"LSA rankings,\" \"Local Services Ads,\" \"Google Guaran…"
+    },
+    {
+      "id": "mk-competitors",
+      "name": "mk-competitors",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/mk-competitors/SKILL.md",
+      "aliases": [
+        "mk-competitors",
+        "mkcompetitors"
+      ],
+      "references": 2,
+      "description": "When the user wants to create competitor comparison or alternative pages for SEO and sales enablement. Also use when the user mentions 'alternative page,' 'vs page,' 'competitor comparison,' 'comparison page,' '[Product]…"
+    },
+    {
+      "id": "mk-cro",
+      "name": "mk-cro",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/mk-cro/SKILL.md",
+      "aliases": [
+        "mk-cro",
+        "mkcro"
+      ],
+      "references": 2,
+      "description": "When the user wants to optimize, improve, or increase conversions on any marketing page or form — including homepage, landing pages, pricing pages, feature pages, lead capture forms, or contact forms. Also use when the u…"
+    },
+    {
+      "id": "multi-location-seo",
+      "name": "multi-location-seo",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/multi-location-seo/SKILL.md",
+      "aliases": [
+        "multi-location-seo",
+        "multilocationseo"
+      ],
+      "references": 0,
+      "description": "When the user manages SEO across multiple business locations (10-500+). Also use when the user mentions \"multi-location,\" \"franchise SEO,\" \"enterprise local SEO,\" \"managing multiple GBPs,\" \"chain store SEO,\" \"location at…"
+    },
+    {
+      "id": "review-management",
+      "name": "review-management",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/review-management/SKILL.md",
+      "aliases": [
+        "review-management",
+        "reviewmanagement"
+      ],
+      "references": 0,
+      "description": "When the user wants to generate more reviews, respond to reviews, build a review strategy, or manage online reputation. Also use when the user mentions \"reviews,\" \"reputation management,\" \"review generation,\" \"review res…"
+    },
+    {
+      "id": "screaming-frog-tool",
+      "name": "screaming-frog-tool",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/screaming-frog-tool/SKILL.md",
+      "aliases": [
+        "screaming-frog-tool",
+        "screamingfrogtool"
+      ],
+      "references": 0,
+      "description": "When the user wants a technical site audit, crawl data analysis, location page quality checks, duplicate content detection, schema validation at scale, or internal linking analysis. Trigger on \"Screaming Frog,\" \"site cra…"
+    },
+    {
+      "id": "semrush-tool",
+      "name": "semrush-tool",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/semrush-tool/SKILL.md",
+      "aliases": [
+        "semrush-tool",
+        "semrushtool"
+      ],
+      "references": 0,
+      "description": "When the user wants keyword research with search volume, competitive keyword analysis, site audit data, position tracking, or competitor organic analysis. Trigger on \"keyword research,\" \"search volume,\" \"keyword difficul…"
+    },
+    {
+      "id": "seo",
+      "name": "seo",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo/SKILL.md",
+      "aliases": [
+        "seo"
+      ],
+      "references": 13,
+      "description": "Comprehensive SEO analysis for any website or business type. Full site audits, single-page analysis, technical SEO (crawlability, indexability, Core Web Vitals with INP), schema markup, content quality (E-E-A-T), image o…"
+    },
+    {
+      "id": "seo-audit",
+      "name": "seo-audit",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-audit/SKILL.md",
+      "aliases": [
+        "seo-audit",
+        "seoaudit"
+      ],
+      "references": 0,
+      "description": "Full website SEO audit with parallel subagent delegation. Crawls up to 500 pages, detects business type, delegates to up to 15 specialists (8 always + 7 conditional), generates health score. Use when user says audit, ful…"
+    },
+    {
+      "id": "seo-backlinks",
+      "name": "seo-backlinks",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-backlinks/SKILL.md",
+      "aliases": [
+        "seo-backlinks",
+        "seobacklinks"
+      ],
+      "references": 0,
+      "description": "Backlink profile analysis: referring domains, anchor text distribution, toxic link detection, competitor gap analysis. Works with free APIs (Moz, Bing Webmaster, Common Crawl) and DataForSEO extension. Use when user says…"
+    },
+    {
+      "id": "seo-cluster",
+      "name": "seo-cluster",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-cluster/SKILL.md",
+      "aliases": [
+        "seo-cluster",
+        "seocluster"
+      ],
+      "references": 3,
+      "description": "> SERP-based semantic topic clustering for content architecture planning. Groups keywords by actual Google SERP overlap (not text similarity), designs hub-and-spoke content clusters with internal link matrices, and gener…"
+    },
+    {
+      "id": "seo-competitor-pages",
+      "name": "seo-competitor-pages",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-competitor-pages/SKILL.md",
+      "aliases": [
+        "seo-competitor-pages",
+        "seocompetitorpages"
+      ],
+      "references": 0,
+      "description": "> Generate SEO-optimized competitor comparison and alternatives pages. Covers \"X vs Y\" layouts, \"alternatives to X\" pages, feature matrices, schema markup, and conversion optimization. Use when user says \"comparison page…"
+    },
+    {
+      "id": "seo-content",
+      "name": "seo-content",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-content/SKILL.md",
+      "aliases": [
+        "seo-content",
+        "seocontent"
+      ],
+      "references": 0,
+      "description": "> Content quality and E-E-A-T analysis with AI citation readiness assessment. Use when user says \"content quality\", \"E-E-A-T\", \"content analysis\", \"readability check\", \"thin content\", or \"content audit\". user-invocable: …"
+    },
+    {
+      "id": "seo-content-brief",
+      "name": "seo-content-brief",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-content-brief/SKILL.md",
+      "aliases": [
+        "seo-content-brief",
+        "seocontentbrief"
+      ],
+      "references": 3,
+      "description": "> Generate competitive SEO content briefs with per-section word counts, competitor scoring, keyword density guidance, and page-type templates. Supports both new page briefs and improve-existing-page briefs. Use when user…"
+    },
+    {
+      "id": "seo-dataforseo",
+      "name": "seo-dataforseo",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-dataforseo/SKILL.md",
+      "aliases": [
+        "seo-dataforseo",
+        "seodataforseo"
+      ],
+      "references": 2,
+      "description": "> Live SEO data via DataForSEO MCP server: SERP analysis, keyword research (volume, difficulty, intent, trends), backlink profiles, on-page analysis, competitor and content analysis, business listings, AI visibility (LLM…"
+    },
+    {
+      "id": "seo-drift",
+      "name": "seo-drift",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-drift/SKILL.md",
+      "aliases": [
+        "seo-drift",
+        "seodrift"
+      ],
+      "references": 1,
+      "description": "> SEO drift monitoring: capture baselines of SEO-critical elements, detect changes, and track regressions over time. Git for SEO: baseline, diff, and track changes to your on-page SEO. Use when user says \"SEO drift\", \"ba…"
+    },
+    {
+      "id": "seo-ecommerce",
+      "name": "seo-ecommerce",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-ecommerce/SKILL.md",
+      "aliases": [
+        "seo-ecommerce",
+        "seoecommerce"
+      ],
+      "references": 2,
+      "description": "> E-commerce SEO analysis: Google Shopping visibility, Amazon marketplace intelligence, product schema validation, competitor pricing analysis, and marketplace keyword gaps. Combines on-page product SEO with marketplace …"
+    },
+    {
+      "id": "seo-flow",
+      "name": "seo-flow",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-flow/SKILL.md",
+      "aliases": [
+        "seo-flow",
+        "seoflow"
+      ],
+      "references": 44,
+      "description": "> FLOW framework integration: evidence-led SEO using the Find → Leverage → Optimize → Win loop. Surfaces stage-specific AI prompts from the FLOW knowledge base (41 prompts, CC BY 4.0). Use when user says \"FLOW\", \"FLOW fr…"
+    },
+    {
+      "id": "seo-geo",
+      "name": "seo-geo",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-geo/SKILL.md",
+      "aliases": [
+        "seo-geo",
+        "seogeo"
+      ],
+      "references": 2,
+      "description": "> Optimize content for AI Overviews (formerly SGE), ChatGPT web search, Perplexity, and other AI-powered search experiences. Generative Engine Optimization (GEO) analysis including brand mention signals, AI crawler acces…"
+    },
+    {
+      "id": "seo-google",
+      "name": "seo-google",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-google/SKILL.md",
+      "aliases": [
+        "seo-google",
+        "seogoogle"
+      ],
+      "references": 11,
+      "description": "> Google SEO APIs: Search Console (Search Analytics, URL Inspection, Sitemaps), PageSpeed Insights v5, CrUX field data with 25-week history, Indexing API v3, and GA4 organic traffic. Provides real Google field data for C…"
+    },
+    {
+      "id": "seo-hreflang",
+      "name": "seo-hreflang",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-hreflang/SKILL.md",
+      "aliases": [
+        "seo-hreflang",
+        "seohreflang"
+      ],
+      "references": 4,
+      "description": "> Hreflang and international SEO audit, validation, and generation. Detects common mistakes, validates language/region codes, and generates correct hreflang implementations. Use when user says \"hreflang\", \"i18n SEO\", \"in…"
+    },
+    {
+      "id": "seo-image-gen",
+      "name": "seo-image-gen",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-image-gen/SKILL.md",
+      "aliases": [
+        "seo-image-gen",
+        "seoimagegen"
+      ],
+      "references": 7,
+      "description": "AI image generation for SEO assets: OG/social preview images, blog hero images, schema images, product photography, infographics. Powered by Gemini via nanobanana-mcp. Requires banana extension installed. Use when user s…"
+    },
+    {
+      "id": "seo-images",
+      "name": "seo-images",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-images/SKILL.md",
+      "aliases": [
+        "seo-images",
+        "seoimages"
+      ],
+      "references": 0,
+      "description": "> Image optimization analysis for SEO and performance. Checks alt text, file sizes, formats, responsive images, lazy loading, CLS prevention, image SERP rankings (via DataForSEO), and image file optimization (WebP/AVIF c…"
+    },
+    {
+      "id": "seo-local",
+      "name": "seo-local",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-local/SKILL.md",
+      "aliases": [
+        "seo-local",
+        "seolocal"
+      ],
+      "references": 0,
+      "description": "> Local SEO analysis covering Google Business Profile optimization, NAP consistency, citation health, review signals, local schema markup, location page quality, multi-location SEO, and industry-specific recommendations.…"
+    },
+    {
+      "id": "seo-maps",
+      "name": "seo-maps",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-maps/SKILL.md",
+      "aliases": [
+        "seo-maps",
+        "seomaps"
+      ],
+      "references": 0,
+      "description": "> Maps intelligence for local SEO: geo-grid rank tracking, GBP profile auditing via API, review intelligence across Google/Tripadvisor/Trustpilot, cross-platform NAP verification, competitor radius mapping, and LocalBusi…"
+    },
+    {
+      "id": "seo-page",
+      "name": "seo-page",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-page/SKILL.md",
+      "aliases": [
+        "seo-page",
+        "seopage"
+      ],
+      "references": 0,
+      "description": "> Deep single-page SEO analysis covering on-page elements, content quality, technical meta tags, schema, images, and performance. Use when user says \"analyze this page\", \"check page SEO\", \"single URL\", \"check this page\",…"
+    },
+    {
+      "id": "seo-plan",
+      "name": "seo-plan",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-plan/SKILL.md",
+      "aliases": [
+        "seo-plan",
+        "seoplan"
+      ],
+      "references": 0,
+      "description": "> Strategic SEO planning for new or existing websites. Industry-specific templates, competitive analysis, content strategy, and implementation roadmap. Use when user says \"SEO plan\", \"SEO strategy\", \"SEO planning\", \"cont…"
+    },
+    {
+      "id": "seo-programmatic",
+      "name": "seo-programmatic",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-programmatic/SKILL.md",
+      "aliases": [
+        "seo-programmatic",
+        "seoprogrammatic"
+      ],
+      "references": 0,
+      "description": "> Programmatic SEO planning and analysis for pages generated at scale from data sources. Covers template engines, URL patterns, internal linking automation, thin content safeguards, and index bloat prevention. Use when u…"
+    },
+    {
+      "id": "seo-schema",
+      "name": "seo-schema",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-schema/SKILL.md",
+      "aliases": [
+        "seo-schema",
+        "seoschema"
+      ],
+      "references": 1,
+      "description": "> Detect, validate, and generate Schema.org structured data. JSON-LD format preferred. Use when user says \"schema\", \"structured data\", \"rich results\", \"JSON-LD\", or \"markup\". user-invocable: true argument-hint: \"[url]"
+    },
+    {
+      "id": "seo-sitemap",
+      "name": "seo-sitemap",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-sitemap/SKILL.md",
+      "aliases": [
+        "seo-sitemap",
+        "seositemap"
+      ],
+      "references": 0,
+      "description": "> Analyze existing XML sitemaps or generate new ones with industry templates. Validates format, URLs, and structure. Use when user says \"sitemap\", \"generate sitemap\", \"sitemap issues\", or \"XML sitemap\". user-invocable: t…"
+    },
+    {
+      "id": "seo-sxo",
+      "name": "seo-sxo",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-sxo/SKILL.md",
+      "aliases": [
+        "seo-sxo",
+        "seosxo"
+      ],
+      "references": 4,
+      "description": "> Search Experience Optimization: reads Google SERPs backwards to detect page-type mismatches, derives user stories from search intent signals, and scores pages from multiple persona perspectives. Identifies why well-opt…"
+    },
+    {
+      "id": "seo-technical",
+      "name": "seo-technical",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/seo-technical/SKILL.md",
+      "aliases": [
+        "seo-technical",
+        "seotechnical"
+      ],
+      "references": 1,
+      "description": "> Technical SEO audit across 9 categories: crawlability, indexability, security, URL structure, mobile, Core Web Vitals, structured data, JavaScript rendering, and IndexNow protocol. Use when user says \"technical SEO\", \"…"
+    },
+    {
+      "id": "serpapi-tool",
+      "name": "serpapi-tool",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/serpapi-tool/SKILL.md",
+      "aliases": [
+        "serpapi-tool",
+        "serpapitool"
+      ],
+      "references": 0,
+      "description": "When the user wants to check live SERP results for a keyword, see what's in the local pack right now, check People Also Ask, see AI Overviews, verify SERP features, or do a quick spot-check of local search results. Trigg…"
+    },
+    {
+      "id": "service-area-seo",
+      "name": "service-area-seo",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/service-area-seo/SKILL.md",
+      "aliases": [
+        "service-area-seo",
+        "serviceareaseo"
+      ],
+      "references": 0,
+      "description": "When the user operates a service-area business (SAB) without a public storefront. Also use when the user mentions \"service area business,\" \"SAB,\" \"no storefront,\" \"hide my address,\" \"mobile business,\" \"home-based busines…"
+    },
+    {
+      "id": "whitespark-tool",
+      "name": "whitespark-tool",
+      "group": "06-SEO-GEO-本地",
+      "path": "skills/vault/06-SEO-GEO-本地/whitespark-tool/SKILL.md",
+      "aliases": [
+        "whitespark-tool",
+        "whitesparktool"
+      ],
+      "references": 0,
+      "description": "When the user wants citation gap analysis, managed citation building, review generation campaigns, or local rank tracking. Trigger on \"Whitespark,\" \"citation finder,\" \"where are my competitors listed,\" \"citation gap,\" \"b…"
+    },
+    {
+      "id": "baoyu-article-illustrator",
+      "name": "baoyu-article-illustrator",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-article-illustrator/SKILL.md",
+      "aliases": [
+        "baoyu-article-illustrator",
+        "baoyuarticleillustrator"
+      ],
+      "references": 29,
+      "description": "Analyzes article structure, identifies positions requiring visual aids, generates illustrations with Type × Style two-dimension approach. Use when user asks to \"illustrate article\", \"add images\", \"generate images for art…"
+    },
+    {
+      "id": "baoyu-comic",
+      "name": "baoyu-comic",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-comic/SKILL.md",
+      "aliases": [
+        "baoyu-comic",
+        "baoyucomic"
+      ],
+      "references": 32,
+      "description": "Knowledge comic creator supporting multiple art styles and tones. Creates original educational comics with detailed panel layouts and sequential image generation. Use when user asks to create \"知识漫画\", \"教育漫画\", \"biography c…"
+    },
+    {
+      "id": "baoyu-compress-image",
+      "name": "baoyu-compress-image",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-compress-image/SKILL.md",
+      "aliases": [
+        "baoyu-compress-image",
+        "baoyucompressimage"
+      ],
+      "references": 0,
+      "description": "Compresses images to WebP (default) or PNG with automatic tool selection. Use when user asks to \"compress image\", \"optimize image\", \"convert to webp\", or reduce image file size."
+    },
+    {
+      "id": "baoyu-cover-image",
+      "name": "baoyu-cover-image",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-cover-image/SKILL.md",
+      "aliases": [
+        "baoyu-cover-image",
+        "baoyucoverimage"
+      ],
+      "references": 32,
+      "description": "Generates article cover images with 5 dimensions (type, palette, rendering, text, mood) combining 10 color palettes and 7 rendering styles. Supports cinematic (2.35:1), widescreen (16:9), and square (1:1) aspects. Use wh…"
+    },
+    {
+      "id": "baoyu-danger-gemini-web",
+      "name": "baoyu-danger-gemini-web",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-danger-gemini-web/SKILL.md",
+      "aliases": [
+        "baoyu-danger-gemini-web",
+        "baoyudangergeminiweb"
+      ],
+      "references": 0,
+      "description": "Generates images and text via reverse-engineered Gemini Web API. Supports text generation, image generation from prompts, reference images for vision input, and multi-turn conversations. Use when other skills need image …"
+    },
+    {
+      "id": "baoyu-danger-x-to-markdown",
+      "name": "baoyu-danger-x-to-markdown",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-danger-x-to-markdown/SKILL.md",
+      "aliases": [
+        "baoyu-danger-x-to-markdown",
+        "baoyudangerxtomarkdown"
+      ],
+      "references": 1,
+      "description": "Converts X (Twitter) tweets and articles to markdown with YAML front matter. Uses reverse-engineered API requiring user consent. Use when user mentions \"X to markdown\", \"tweet to markdown\", \"save tweet\", or provides x.co…"
+    },
+    {
+      "id": "baoyu-format-markdown",
+      "name": "baoyu-format-markdown",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-format-markdown/SKILL.md",
+      "aliases": [
+        "baoyu-format-markdown",
+        "baoyuformatmarkdown"
+      ],
+      "references": 1,
+      "description": "Formats plain text or markdown files with frontmatter, titles, summaries, headings, bold, lists, and code blocks. Use when user asks to \"format markdown\", \"beautify article\", \"add formatting\", or improve article layout. …"
+    },
+    {
+      "id": "baoyu-image-gen",
+      "name": "baoyu-image-gen",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-image-gen/SKILL.md",
+      "aliases": [
+        "baoyu-image-gen",
+        "baoyuimagegen"
+      ],
+      "references": 2,
+      "description": "AI image generation with OpenAI, Azure OpenAI, Google, OpenRouter, DashScope, MiniMax, Jimeng, Seedream and Replicate APIs. Supports text-to-image, reference images, aspect ratios, and batch generation from saved prompt …"
+    },
+    {
+      "id": "baoyu-imagine",
+      "name": "baoyu-imagine",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-imagine/SKILL.md",
+      "aliases": [
+        "baoyu-imagine",
+        "baoyuimagine"
+      ],
+      "references": 2,
+      "description": "AI image generation with OpenAI, Azure OpenAI, Google, OpenRouter, DashScope, MiniMax, Jimeng, Seedream and Replicate APIs. Supports text-to-image, reference images, aspect ratios, and batch generation from saved prompt …"
+    },
+    {
+      "id": "baoyu-infographic",
+      "name": "baoyu-infographic",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-infographic/SKILL.md",
+      "aliases": [
+        "baoyu-infographic",
+        "baoyuinfographic"
+      ],
+      "references": 44,
+      "description": "Generates professional infographics with 21 layout types and 20 visual styles. Analyzes content, recommends layout×style combinations, and generates publication-ready infographics. Use when user asks to create \"infograph…"
+    },
+    {
+      "id": "baoyu-markdown-to-html",
+      "name": "baoyu-markdown-to-html",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-markdown-to-html/SKILL.md",
+      "aliases": [
+        "baoyu-markdown-to-html",
+        "baoyumarkdowntohtml"
+      ],
+      "references": 0,
+      "description": "Converts Markdown to styled HTML with WeChat-compatible themes. Supports code highlighting, math, PlantUML, footnotes, alerts, infographics, and optional bottom citations for external links. Use when user asks for \"markd…"
+    },
+    {
+      "id": "baoyu-post-to-wechat",
+      "name": "baoyu-post-to-wechat",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-post-to-wechat/SKILL.md",
+      "aliases": [
+        "baoyu-post-to-wechat",
+        "baoyuposttowechat"
+      ],
+      "references": 3,
+      "description": "Posts content to WeChat Official Account (微信公众号) via API or Chrome CDP. Supports article posting (文章) with HTML, markdown, or plain text input, and image-text posting (贴图, formerly 图文) with multiple images. Markdown arti…"
+    },
+    {
+      "id": "baoyu-post-to-weibo",
+      "name": "baoyu-post-to-weibo",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-post-to-weibo/SKILL.md",
+      "aliases": [
+        "baoyu-post-to-weibo",
+        "baoyuposttoweibo"
+      ],
+      "references": 0,
+      "description": "Posts content to Weibo (微博). Supports regular posts with text, images, and videos, and headline articles (头条文章) with Markdown input via Chrome CDP. Use when user asks to \"post to Weibo\", \"发微博\", \"发布微博\", \"publish to Weibo\"…"
+    },
+    {
+      "id": "baoyu-post-to-x",
+      "name": "baoyu-post-to-x",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-post-to-x/SKILL.md",
+      "aliases": [
+        "baoyu-post-to-x",
+        "baoyuposttox"
+      ],
+      "references": 2,
+      "description": "Posts content and articles to X (Twitter). Supports regular posts with images/videos and X Articles (long-form Markdown). Uses real Chrome with CDP to bypass anti-automation. Use when user asks to \"post to X\", \"tweet\", \"…"
+    },
+    {
+      "id": "baoyu-slide-deck",
+      "name": "baoyu-slide-deck",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-slide-deck/SKILL.md",
+      "aliases": [
+        "baoyu-slide-deck",
+        "baoyuslidedeck"
+      ],
+      "references": 29,
+      "description": "Generates professional slide deck images from content. Creates outlines with style instructions, then generates individual slide images. Use when user asks to \"create slides\", \"make a presentation\", \"generate deck\", \"sli…"
+    },
+    {
+      "id": "baoyu-translate",
+      "name": "baoyu-translate",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-translate/SKILL.md",
+      "aliases": [
+        "baoyu-translate",
+        "baoyutranslate"
+      ],
+      "references": 6,
+      "description": "Translates articles and documents between languages with three modes - quick (direct), normal (analyze then translate), and refined (analyze, translate, review, polish). Supports custom glossaries and terminology consist…"
+    },
+    {
+      "id": "baoyu-url-to-markdown",
+      "name": "baoyu-url-to-markdown",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-url-to-markdown/SKILL.md",
+      "aliases": [
+        "baoyu-url-to-markdown",
+        "baoyuurltomarkdown"
+      ],
+      "references": 1,
+      "description": "Fetch any URL and convert to markdown using baoyu-fetch CLI (Chrome CDP with site-specific adapters). Built-in adapters for X/Twitter, YouTube transcripts, Hacker News threads, and generic pages via Defuddle. Handles log…"
+    },
+    {
+      "id": "baoyu-youtube-transcript",
+      "name": "baoyu-youtube-transcript",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/baoyu-youtube-transcript/SKILL.md",
+      "aliases": [
+        "baoyu-youtube-transcript",
+        "baoyuyoutubetranscript"
+      ],
+      "references": 0,
+      "description": "Downloads YouTube video transcripts/subtitles and cover images by URL or video ID. Supports multiple languages, translation, chapters, and speaker identification. Caches raw data for fast re-formatting. Use when user ask…"
+    },
+    {
+      "id": "embedded-captions",
+      "name": "embedded-captions",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/embedded-captions/SKILL.md",
+      "aliases": [
+        "embedded-captions",
+        "embeddedcaptions"
+      ],
+      "references": 15,
+      "description": "> Add captions or subtitles to an existing single-subject talking-head video without editing the footage. Use for plain verbatim captions, cinematic captions embedded behind the subject, VFX captions, “炸/特效/酷炫字幕,” or a n…"
+    },
+    {
+      "id": "faceless-explainer",
+      "name": "faceless-explainer",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/faceless-explainer/SKILL.md",
+      "aliases": [
+        "faceless-explainer",
+        "facelessexplainer"
+      ],
+      "references": 4,
+      "description": "Turn arbitrary text — an article, notes, a topic, a brief — into a faceless explainer video: there is no site or footage to capture, so the visuals are invented per scene (typography, abstract graphics, diagrams, data-vi…"
+    },
+    {
+      "id": "figma",
+      "name": "figma",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/figma/SKILL.md",
+      "aliases": [
+        "figma"
+      ],
+      "references": 0,
+      "description": "Import Figma content into a HyperFrames composition — rendered assets, brand tokens, components, storyboard sections → reconstructed motion (frames read as states, not slides) (REST/CLI), connector-assisted motion when a…"
+    },
+    {
+      "id": "general-video",
+      "name": "general-video",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/general-video/SKILL.md",
+      "aliases": [
+        "general-video",
+        "generalvideo"
+      ],
+      "references": 0,
+      "description": "> Author or edit a custom HyperFrames composition when no specialized workflow fits, or when BRIEF.md sets flow: companion. Use for longer or multi-scene pieces, brand and sizzle reels, montages, static loops, static tit…"
+    },
+    {
+      "id": "gptimage2",
+      "name": "gptimage2",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/gptimage2/SKILL.md",
+      "aliases": [
+        "gptimage",
+        "gptimage2"
+      ],
+      "references": 0,
+      "description": "Generate images via gpt-image-2 on ai-proxy.cc (async task API). Supports 15 aspect ratios, 3 resolution tiers (1k/2k/4k), and image-to-image with reference images. Use when user asks to generate, create, or draw an imag…"
+    },
+    {
+      "id": "higgsfield-generate",
+      "name": "higgsfield-generate",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/higgsfield-generate/SKILL.md",
+      "aliases": [
+        "higgsfield-generate",
+        "higgsfieldgenerate"
+      ],
+      "references": 12,
+      "description": "| Generate images/videos/3D assets/audio via Higgsfield AI. Defaults: GPT Image 2 for image/design/text, Seedance 2.0 for video, Nano Banana 2/Pro for character/reference images, Marketing Studio for ads, Sonilo/Mirelo f…"
+    },
+    {
+      "id": "higgsfield-marketplace-cards",
+      "name": "higgsfield-marketplace-cards",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/higgsfield-marketplace-cards/SKILL.md",
+      "aliases": [
+        "higgsfield-marketplace-cards",
+        "higgsfieldmarketplacecards"
+      ],
+      "references": 0,
+      "description": "| Generate marketplace product image cards through Higgsfield: compliant main image, secondary product images, and A+ style content modules. Use when the user asks for marketplace listing images, product detail cards, se…"
+    },
+    {
+      "id": "higgsfield-product-photoshoot",
+      "name": "higgsfield-product-photoshoot",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/higgsfield-product-photoshoot/SKILL.md",
+      "aliases": [
+        "higgsfield-product-photoshoot",
+        "higgsfieldproductphotoshoot"
+      ],
+      "references": 0,
+      "description": "| Generate brand-quality product images through Higgsfield product-photoshoot prompt enhancement on GPT Image 2 / gpt_image_2. Entry point for professional brand/product visuals. Use when: \"product photo\", \"studio shot\",…"
+    },
+    {
+      "id": "higgsfield-soul-id",
+      "name": "higgsfield-soul-id",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/higgsfield-soul-id/SKILL.md",
+      "aliases": [
+        "higgsfield-soul-id",
+        "higgsfieldsoulid"
+      ],
+      "references": 2,
+      "description": "| Train a Soul Character — a personalized model on a person's face that Higgsfield uses for identity-faithful image and video generation. Use when: \"create my Soul\", \"train my face\", \"make my digital twin\", \"build me an …"
+    },
+    {
+      "id": "hyperframes",
+      "name": "hyperframes",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/hyperframes/SKILL.md",
+      "aliases": [
+        "hyperframes"
+      ],
+      "references": 16,
+      "description": "> Mandatory entry point: read this first for any request to make, create, edit, animate, or render a video, animation, or motion graphic, including a promo, explainer, captioned clip, title card, overlay, slideshow or in…"
+    },
+    {
+      "id": "hyperframes-animation",
+      "name": "hyperframes-animation",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/hyperframes-animation/SKILL.md",
+      "aliases": [
+        "hyperframes-animation",
+        "hyperframesanimation"
+      ],
+      "references": 0,
+      "description": "All animation knowledge for HyperFrames — atomic motion rules, multi-phase scene blueprints, scene transitions, broader motion-design techniques, AND the seven runtime adapters (GSAP default, plus Lottie, Three.js, Anime…"
+    },
+    {
+      "id": "hyperframes-cli",
+      "name": "hyperframes-cli",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/hyperframes-cli/SKILL.md",
+      "aliases": [
+        "hyperframes-cli",
+        "hyperframescli"
+      ],
+      "references": 10,
+      "description": "> Use the HyperFrames CLI development loop: init, add, catalog, capture, lint, check, snapshot, compare, grade-compare, preview, play, present, beats, keyframes, single or batch render, publish, cloud, cloudrun, feedback…"
+    },
+    {
+      "id": "hyperframes-core",
+      "name": "hyperframes-core",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/hyperframes-core/SKILL.md",
+      "aliases": [
+        "hyperframes-core",
+        "hyperframescore"
+      ],
+      "references": 17,
+      "description": "The HyperFrames composition contract — build one renderable project. Use for composition structure, the `data-*` timing attributes, `class=\"clip\"`, tracks, sub-compositions, variables, framework-owned media playback, det…"
+    },
+    {
+      "id": "hyperframes-creative",
+      "name": "hyperframes-creative",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/hyperframes-creative/SKILL.md",
+      "aliases": [
+        "hyperframes-creative",
+        "hyperframescreative"
+      ],
+      "references": 15,
+      "description": "Non-animation creative direction for HyperFrames videos. Use for design spec (frame.md / design.md) handling, palettes, typography, narration, beat planning, audio-reactive visuals, composition patterns, and brand / styl…"
+    },
+    {
+      "id": "hyperframes-keyframes",
+      "name": "hyperframes-keyframes",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/hyperframes-keyframes/SKILL.md",
+      "aliases": [
+        "hyperframes-keyframes",
+        "hyperframeskeyframes"
+      ],
+      "references": 1,
+      "description": "> Use when a HyperFrames composition needs seek-safe 2D/3D keyframes, GSAP timelines, CSS keyframes, Anime.js, WAAPI, FLIP, paths, masks, SVG morph/draw, text trails, 3D depth, or `hyperframes keyframes` diagnostics. Don…"
+    },
+    {
+      "id": "hyperframes-registry",
+      "name": "hyperframes-registry",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/hyperframes-registry/SKILL.md",
+      "aliases": [
+        "hyperframes-registry",
+        "hyperframesregistry"
+      ],
+      "references": 7,
+      "description": "Install, discover, and wire registry blocks and components into HyperFrames compositions. Use when running hyperframes add or hyperframes catalog, installing one item or every block matching a tag, wiring an installed it…"
+    },
+    {
+      "id": "media-use",
+      "name": "media-use",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/media-use/SKILL.md",
+      "aliases": [
+        "media-use",
+        "mediause"
+      ],
+      "references": 10,
+      "description": "Agent Media OS, the single skill for every media need in a HyperFrames project. Resolve BGM, SFX, image, icon, brand logo, voice, color grade, or LUT into a frozen local file or paste-ready block + ledger record (one ver…"
+    },
+    {
+      "id": "motion-graphics",
+      "name": "motion-graphics",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/motion-graphics/SKILL.md",
+      "aliases": [
+        "motion-graphics",
+        "motiongraphics"
+      ],
+      "references": 3,
+      "description": "> A short, design-led motion graphic where motion is the message — kinetic typography, stat count-up, chart/data-viz hit, logo sting / brand lockup, lower-third / callout / social overlay, animated map (highlight regions…"
+    },
+    {
+      "id": "music-to-video",
+      "name": "music-to-video",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/music-to-video/SKILL.md",
+      "aliases": [
+        "music-to-video",
+        "musictovideo"
+      ],
+      "references": 7,
+      "description": "Turn a music track (an audio file, a video to pull audio from, or a track generated from a mood brief) into a beat-synced video — lyric video, slideshow, or kinetic promo. The music drives all pacing; any user-supplied i…"
+    },
+    {
+      "id": "open-montage",
+      "name": "open-montage",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/open-montage/SKILL.md",
+      "aliases": [
+        "open-montage",
+        "openmontage"
+      ],
+      "references": 0,
+      "description": "| AI 驱动的视频制作系统 (OpenMontage)。当用户要制作视频、创建动画、做解说视频、剪辑视频、制作短视频、视频配音、制作预告片、做播客剪辑、制作教程录屏、做数据可视化动画等任何视频内容创作需求时使用。支持 12 种制作流水线（解说动画、电影级剪辑、对口播、播客二创、屏幕录制、角色动画等）、52 个工具、自动配乐和字幕。即使用户只是说\"做个视频\"也应触发。"
+    },
+    {
+      "id": "ppt-master",
+      "name": "ppt-master",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/ppt-master/SKILL.md",
+      "aliases": [
+        "ppt-master",
+        "pptmaster"
+      ],
+      "references": 117,
+      "description": "> AI-driven presentation workflow for generating editable PPTX decks and slides, reconstructing page visuals, creating reusable Brand/Style/Layout/Deck workspaces, filling native PPTX templates, and enhancing finished PP…"
+    },
+    {
+      "id": "ppt-source-plan",
+      "name": "ppt-source-plan",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/ppt-source-plan/SKILL.md",
+      "aliases": [
+        "ppt-source-plan",
+        "pptsourceplan"
+      ],
+      "references": 0,
+      "description": ">- Now a stage inside pptgen. Turns source PPT or screenshots into 逐字稿, style prompt, and a ~21-page plan, then generates the deck from those files. Use when the user sends PPT资料, 图文, 课件截图, or asks for 逐字稿, 风格提示词, PPT制作方…"
+    },
+    {
+      "id": "pptgen",
+      "name": "pptgen",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/pptgen/SKILL.md",
+      "aliases": [
+        "pptgen"
+      ],
+      "references": 0,
+      "description": ">- Builds sellable Chinese teacher courseware packs for Xiaohongshu: pick a classroom scenario (班干部竞选/培训/聘任, 立规矩, 开学第一课, 家长会, 心理健康课, 安全教育, 节日班会, 品德励志, 教师成长分享), research demand (ego lite if present; otherwise an interacti…"
+    },
+    {
+      "id": "pptx",
+      "name": "pptx",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/pptx/SKILL.md",
+      "aliases": [
+        "pptx"
+      ],
+      "references": 0,
+      "description": "Use this skill any time a .pptx file is involved in any way — as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx file (even …"
+    },
+    {
+      "id": "pr-to-video",
+      "name": "pr-to-video",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/pr-to-video/SKILL.md",
+      "aliases": [
+        "pr-to-video",
+        "prtovideo"
+      ],
+      "references": 5,
+      "description": "Turn a GitHub pull request (a PR URL, owner/repo#N, or 'this PR' in a checked-out repo) into a code-change explainer video — changelog, feature reveal, fix, or refactor walkthrough built from the diff, commits, and files…"
+    },
+    {
+      "id": "product-launch-video",
+      "name": "product-launch-video",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/product-launch-video/SKILL.md",
+      "aliases": [
+        "product-launch-video",
+        "productlaunchvideo"
+      ],
+      "references": 4,
+      "description": "Turn a product or marketing URL, pasted script, or brief into a product launch / promo video — SaaS promos, feature reveals, product demos, app and company launches. Use when the user wants to market, launch, promote, or…"
+    },
+    {
+      "id": "remotion-to-hyperframes",
+      "name": "remotion-to-hyperframes",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/remotion-to-hyperframes/SKILL.md",
+      "aliases": [
+        "remotion-to-hyperframes",
+        "remotiontohyperframes"
+      ],
+      "references": 11,
+      "description": "Port an existing Remotion (React) composition''s source to HyperFrames HTML. Use ONLY on an explicit ask to port/convert/migrate/translate a Remotion source — one-way, Remotion-only. A passing Remotion mention, reference…"
+    },
+    {
+      "id": "slideshow",
+      "name": "slideshow",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/slideshow/SKILL.md",
+      "aliases": [
+        "slideshow"
+      ],
+      "references": 1,
+      "description": "> Author a HyperFrames slideshow — a presentation, pitch deck, or interactive deck with discrete slides, fragment reveals, branching, hotspot navigation, and built-in presenter mode with speaker notes; also converts an e…"
+    },
+    {
+      "id": "talking-head-recut",
+      "name": "talking-head-recut",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/talking-head-recut/SKILL.md",
+      "aliases": [
+        "talking-head-recut",
+        "talkingheadrecut"
+      ],
+      "references": 1,
+      "description": "Package an existing talking-head / interview / podcast video with timed, designed GRAPHIC OVERLAY cards — kinetic titles, lower-thirds, data callouts, quotes, side panels, picture-in-picture — synced to the transcript, o…"
+    },
+    {
+      "id": "yt-novel-series",
+      "name": "yt-novel-series",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/yt-novel-series/SKILL.md",
+      "aliases": [
+        "yt-novel-series",
+        "ytnovelseries"
+      ],
+      "references": 4,
+      "description": "Turn a novel into a faceless YouTube anime-style series — adapt chapters into a spoken script with per-character voices and reference-image-locked character art, then batch-generate art, multi-character voiceover, covers…"
+    },
+    {
+      "id": "yt-story-script",
+      "name": "yt-story-script",
+      "group": "07-视频-PPT-设计",
+      "path": "skills/vault/07-视频-PPT-设计/yt-story-script/SKILL.md",
+      "aliases": [
+        "yt-story-script",
+        "ytstoryscript"
+      ],
+      "references": 4,
+      "description": "Generate complete timestamped narration scripts for a faceless YouTube story/documentary channel, plus per-timestamp image prompts ready for batch image generation. Use whenever the user wants to script a YouTube story v…"
+    },
+    {
+      "id": "ai-website-cloner-template",
+      "name": "ai-website-cloner-template",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/ai-website-cloner-template/SKILL.md",
+      "aliases": [
+        "ai-website-cloner-template",
+        "aiwebsiteclonertemplate"
+      ],
+      "references": 0,
+      "description": "Bootstrap and operate the JCodesMore ai-website-cloner-template workflow to reverse-engineer websites into a Next.js app. Use this when the user asks to set up, install, or work from the ai-website-cloner-template GitHub…"
+    },
+    {
+      "id": "applescript",
+      "name": "applescript",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/applescript/SKILL.md",
+      "aliases": [
+        "applescript"
+      ],
+      "references": 0,
+      "description": "Universal AppleScript automation for macOS. Control Chrome, Finder, Mail, Calendar, Messages, Music, Terminal, and any scriptable app. Use when asked to automate macOS apps, control browsers, manage files, send messages,…"
+    },
+    {
+      "id": "browser-use",
+      "name": "browser-use",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/browser-use/SKILL.md",
+      "aliases": [
+        "browser-use",
+        "browseruse"
+      ],
+      "references": 0,
+      "description": "Direct browser control via CDP for web interaction: automation, scraping, testing, screenshots, and site/app work."
+    },
+    {
+      "id": "ego-browser",
+      "name": "ego-browser",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/ego-browser/SKILL.md",
+      "aliases": [
+        "ego-browser",
+        "egobrowser"
+      ],
+      "references": 3,
+      "description": "When you need a browser, read this Skill by default. Use it to open and operate websites, fill forms, click buttons, take screenshots, extract page data, sign in, and perform other browser automation tasks, as well as we…"
+    },
+    {
+      "id": "last30days",
+      "name": "last30days",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/last30days/SKILL.md",
+      "aliases": [
+        "last30days"
+      ],
+      "references": 0,
+      "description": "Deep research engine covering the last 30 days across 10+ sources - Reddit, X/Twitter, YouTube, TikTok, Instagram, Hacker News, Polymarket, Bluesky, Truth Social, web. AI synthesizes findings into grounded, cited reports…"
+    },
+    {
+      "id": "last30days",
+      "name": "last30days",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/last30days/skills/last30days/SKILL.md",
+      "aliases": [
+        "last30days"
+      ],
+      "references": 0,
+      "description": "Alias wrapper for the parent last30days skill definition."
+    },
+    {
+      "id": "mouse-click",
+      "name": "mouse-click",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/mouse-click/SKILL.md",
+      "aliases": [
+        "mouse-click",
+        "mouseclick"
+      ],
+      "references": 0,
+      "description": "Use this skill when a Proma or coding agent needs to perform a real macOS mouse action at screen coordinates, such as clicking a desktop app, clicking a point from a screenshot, checking the current mouse position, or dr…"
+    },
+    {
+      "id": "open",
+      "name": "open",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/last30days/variants/open/SKILL.md",
+      "aliases": [
+        "open"
+      ],
+      "references": 4,
+      "description": "Research topics, manage watchlists, get briefings, query history. Also triggered by 'last30'. Sources: Reddit, X, YouTube, web.\" argument-hint: 'last30 AI video tools, last30 watch my competitor every week, last30 give m…"
+    },
+    {
+      "id": "playwright",
+      "name": "playwright",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/playwright/SKILL.md",
+      "aliases": [
+        "playwright"
+      ],
+      "references": 2,
+      "description": "Use when the task requires automating a real browser from the terminal (navigation, form filling, snapshots, screenshots, data extraction, UI-flow debugging) via `playwright-cli` or the bundled wrapper script."
+    },
+    {
+      "id": "playwright-interactive",
+      "name": "playwright-interactive",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/playwright-interactive/SKILL.md",
+      "aliases": [
+        "playwright-interactive",
+        "playwrightinteractive"
+      ],
+      "references": 0,
+      "description": "Persistent browser and Electron interaction through `js_repl` for fast iterative UI debugging."
+    },
+    {
+      "id": "scrapegraph",
+      "name": "scrapegraph",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/scrapegraph/SKILL.md",
+      "aliases": [
+        "scrapegraph"
+      ],
+      "references": 0,
+      "description": "AI-powered web scraping using ScrapeGraphAI + DeepSeek V4 Pro via ai-proxy.cc. Extracts structured data from any URL or local HTML/JSON/XML file using natural language prompts. Use when user asks to scrape, extract, or p…"
+    },
+    {
+      "id": "screenshot",
+      "name": "screenshot",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/screenshot/SKILL.md",
+      "aliases": [
+        "screenshot"
+      ],
+      "references": 0,
+      "description": "Use when the user explicitly asks for a desktop or system screenshot (full screen, specific app or window, or a pixel region), or when tool-specific capture capabilities are unavailable and an OS-level capture is needed."
+    },
+    {
+      "id": "webdown-static",
+      "name": "webdown-static",
+      "group": "08-浏览器-自动化",
+      "path": "skills/vault/08-浏览器-自动化/webdown-static/SKILL.md",
+      "aliases": [
+        "webdown-static",
+        "webdownstatic"
+      ],
+      "references": 0,
+      "description": "Turn a public http/https URL into a local static webpage folder containing index.html and downloaded assets. Use this whenever the user wants to save, archive, mirror, freeze, download, or clone a live webpage into plain…"
+    },
+    {
+      "id": "agents-sdk",
+      "name": "agents-sdk",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/agents-sdk/SKILL.md",
+      "aliases": [
+        "agents-sdk",
+        "agentssdk"
+      ],
+      "references": 19,
+      "description": "Build AI agents on Cloudflare Workers using the Agents SDK. Load when creating stateful agents, durable workflows, real-time WebSocket apps, scheduled tasks, MCP servers, chat applications, voice agents, or browser autom…"
+    },
+    {
+      "id": "cloudflare",
+      "name": "cloudflare",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/cloudflare/SKILL.md",
+      "aliases": [
+        "cloudflare"
+      ],
+      "references": 319,
+      "description": "Comprehensive Cloudflare platform skill covering Workers, Pages, storage (KV, D1, R2), AI (Workers AI, Vectorize, Agents SDK), feature flags (Flagship), networking (Tunnel, Spectrum), security (WAF, DDoS), and infrastruc…"
+    },
+    {
+      "id": "cloudflare-email-service",
+      "name": "cloudflare-email-service",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/cloudflare-email-service/SKILL.md",
+      "aliases": [
+        "cloudflare-email-service",
+        "cloudflareemailservice"
+      ],
+      "references": 5,
+      "description": "Send and receive transactional emails with Cloudflare Email Service (Email Sending + Email Routing). Use when building email sending (Workers binding or REST API), email routing, Agents SDK email handling, or integrating…"
+    },
+    {
+      "id": "cloudflare-one",
+      "name": "cloudflare-one",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/cloudflare-one/SKILL.md",
+      "aliases": [
+        "cloudflare-one",
+        "cloudflareone"
+      ],
+      "references": 0,
+      "description": "Guides Cloudflare One Zero Trust and SASE work across Access, Gateway, WARP, Tunnel, Cloudflare WAN, DLP, CASB, device posture, and identity. Use when designing, configuring, troubleshooting, or reviewing Cloudflare One …"
+    },
+    {
+      "id": "cloudflare-one-migrations",
+      "name": "cloudflare-one-migrations",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/cloudflare-one-migrations/SKILL.md",
+      "aliases": [
+        "cloudflare-one-migrations",
+        "cloudflareonemigrations"
+      ],
+      "references": 0,
+      "description": "Plans migrations from Zscaler ZIA/ZPA, Palo Alto, legacy VPN, SWG, or SASE stacks to Cloudflare One. Use for migration assessments, policy mapping, rollout plans, and parity/gap analysis."
+    },
+    {
+      "id": "durable-objects",
+      "name": "durable-objects",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/durable-objects/SKILL.md",
+      "aliases": [
+        "durable-objects",
+        "durableobjects"
+      ],
+      "references": 3,
+      "description": "Create and review Cloudflare Durable Objects. Use when building stateful coordination (chat rooms, multiplayer games, booking systems), implementing RPC methods, SQLite storage, alarms, WebSockets, or reviewing DO code f…"
+    },
+    {
+      "id": "sandbox-migrate-to-next",
+      "name": "sandbox-migrate-to-next",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/sandbox-migrate-to-next/SKILL.md",
+      "aliases": [
+        "sandbox-migrate-to-next",
+        "sandboxmigratetonext"
+      ],
+      "references": 0,
+      "description": "Use when porting a Cloudflare Sandbox app from stable @cloudflare/sandbox to @cloudflare/sandbox@next (Sandbox SDK 1.0 preview), or when the user asks to migrate or upgrade to Sandbox 1.0 / @next. Not for day-to-day stab…"
+    },
+    {
+      "id": "sandbox-next",
+      "name": "sandbox-next",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/sandbox-next/SKILL.md",
+      "aliases": [
+        "sandbox-next",
+        "sandboxnext"
+      ],
+      "references": 2,
+      "description": "Use when building or changing Cloudflare Sandbox apps on @cloudflare/sandbox@next (Sandbox SDK 1.0 preview)—code execution, AI runners, interpreters, CI-like jobs, terminals, files, mounts, tunnels, preview URLs, lifecyc…"
+    },
+    {
+      "id": "sandbox-stable",
+      "name": "sandbox-stable",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/sandbox-stable/SKILL.md",
+      "aliases": [
+        "sandbox-stable",
+        "sandboxstable"
+      ],
+      "references": 0,
+      "description": "Use when building or changing Cloudflare Sandbox apps on the current stable @cloudflare/sandbox package (default npm tag)—commands, sessions, files, ports, tunnels, terminals, bridge, production, or deprecated-API cleanu…"
+    },
+    {
+      "id": "turnstile-spin",
+      "name": "turnstile-spin",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/turnstile-spin/SKILL.md",
+      "aliases": [
+        "turnstile-spin",
+        "turnstilespin"
+      ],
+      "references": 6,
+      "description": "Set up Cloudflare Turnstile end-to-end in a project. Scan the codebase, create the widget via the Cloudflare API, embed it where user requests need bot verification (form submissions, SPA actions, API endpoints, download…"
+    },
+    {
+      "id": "web-perf",
+      "name": "web-perf",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/web-perf/SKILL.md",
+      "aliases": [
+        "web-perf",
+        "webperf"
+      ],
+      "references": 0,
+      "description": "Analyzes web performance using Chrome DevTools MCP. Measures Core Web Vitals (LCP, INP, CLS) and supplementary metrics (FCP, TBT, Speed Index), identifies render-blocking resources, network dependency chains, layout shif…"
+    },
+    {
+      "id": "workers-best-practices",
+      "name": "workers-best-practices",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/workers-best-practices/SKILL.md",
+      "aliases": [
+        "workers-best-practices",
+        "workersbestpractices"
+      ],
+      "references": 2,
+      "description": "Reviews and authors Cloudflare Workers code against production best practices. Load when writing new Workers, reviewing Worker code, configuring wrangler.jsonc, or checking for common Workers anti-patterns (streaming, fl…"
+    },
+    {
+      "id": "wrangler",
+      "name": "wrangler",
+      "group": "09-Cloudflare-工程",
+      "path": "skills/vault/09-Cloudflare-工程/wrangler/SKILL.md",
+      "aliases": [
+        "wrangler"
+      ],
+      "references": 0,
+      "description": "Cloudflare Workers CLI for deploying, developing, and managing Workers, KV, R2, D1, Vectorize, Hyperdrive, Workers AI, Containers, Queues, Workflows, Pipelines, and Secrets Store. Load before running wrangler commands to…"
+    },
+    {
+      "id": "better-auth-integration",
+      "name": "better-auth-integration",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/better-auth-integration/SKILL.md",
+      "aliases": [
+        "better-auth-integration",
+        "betterauthintegration"
+      ],
+      "references": 0,
+      "description": "Guide only for applications using @dodopayments/better-auth, covering authenticated customer sync, checkout, portal access, usage ingestion, and verified webhook callbacks."
+    },
+    {
+      "id": "billing-sdk",
+      "name": "billing-sdk",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/billing-sdk/SKILL.md",
+      "aliases": [
+        "billing-sdk",
+        "billingsdk"
+      ],
+      "references": 0,
+      "description": "Guide for building billing UI with BillingSDK - the open-source React component library for pricing tables, subscription management, usage meters, invoice history, and customer portal flows wired to Dodo Payments."
+    },
+    {
+      "id": "checkout-integration",
+      "name": "checkout-integration",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/checkout-integration/SKILL.md",
+      "aliases": [
+        "checkout-integration",
+        "checkoutintegration"
+      ],
+      "references": 0,
+      "description": "Guide for starting hosted Checkout Sessions, payment links, and overlay or inline checkout for one-time and recurring products; use subscription-integration for post-checkout lifecycle management."
+    },
+    {
+      "id": "credit-based-billing",
+      "name": "credit-based-billing",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/credit-based-billing/SKILL.md",
+      "aliases": [
+        "credit-based-billing",
+        "creditbasedbilling"
+      ],
+      "references": 0,
+      "description": "Complete guide for giving customers included, free, prepaid, promotional, or top-up credits using grants, balances, ledger deductions, rollover, expiry, alerts, and overage."
+    },
+    {
+      "id": "customer-management",
+      "name": "customer-management",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/customer-management/SKILL.md",
+      "aliases": [
+        "customer-management",
+        "customermanagement"
+      ],
+      "references": 0,
+      "description": "Guide for managing customer records, saved payment methods, monetary wallets, and hosted customer-portal sessions; subscription lifecycle and custom billing UI are covered separately."
+    },
+    {
+      "id": "discounts-and-promotions",
+      "name": "discounts-and-promotions",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/discounts-and-promotions/SKILL.md",
+      "aliases": [
+        "discounts-and-promotions",
+        "discountsandpromotions"
+      ],
+      "references": 0,
+      "description": "Guide for implementing discount codes and promotional pricing with Dodo Payments, including CRUD operations, eligibility rules, stacking, subscription-cycle limits, and plan-change preservation."
+    },
+    {
+      "id": "dodo-best-practices",
+      "name": "dodo-best-practices",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/dodo-best-practices/SKILL.md",
+      "aliases": [
+        "dodo-best-practices",
+        "dodobestpractices"
+      ],
+      "references": 0,
+      "description": "Guide for initial Dodo Payments setup, including SDK installation, test and live environments, API keys, and the canonical checkout-to-webhook architecture."
+    },
+    {
+      "id": "framework-adapters",
+      "name": "framework-adapters",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/framework-adapters/SKILL.md",
+      "aliases": [
+        "framework-adapters",
+        "frameworkadapters"
+      ],
+      "references": 0,
+      "description": "Guide for mounting official @dodopayments/* checkout, portal, and verified-webhook route handlers in supported web frameworks; use domain skills for payment and lifecycle logic."
+    },
+    {
+      "id": "license-keys",
+      "name": "license-keys",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/license-keys/SKILL.md",
+      "aliases": [
+        "license-keys",
+        "licensekeys"
+      ],
+      "references": 0,
+      "description": "Guide for implementing license key management with Dodo Payments - activation, validation, and access control for software products."
+    },
+    {
+      "id": "localized-pricing",
+      "name": "localized-pricing",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/localized-pricing/SKILL.md",
+      "aliases": [
+        "localized-pricing",
+        "localizedpricing"
+      ],
+      "references": 0,
+      "description": "Guide for implementing localized pricing, adaptive currency, and purchasing power parity with Dodo Payments"
+    },
+    {
+      "id": "mobile-checkout",
+      "name": "mobile-checkout",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/mobile-checkout/SKILL.md",
+      "aliases": [
+        "mobile-checkout",
+        "mobilecheckout"
+      ],
+      "references": 0,
+      "description": "Guide for implementing mobile in-app checkout with Dodo Payments across React Native, Flutter, iOS, and Android platforms."
+    },
+    {
+      "id": "product-catalog-management",
+      "name": "product-catalog-management",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/product-catalog-management/SKILL.md",
+      "aliases": [
+        "product-catalog-management",
+        "productcatalogmanagement"
+      ],
+      "references": 0,
+      "description": "Guide for creating and managing products, pricing, add-ons, product collections, images, and digital product delivery"
+    },
+    {
+      "id": "refunds-and-disputes",
+      "name": "refunds-and-disputes",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/refunds-and-disputes/SKILL.md",
+      "aliases": [
+        "refunds-and-disputes",
+        "refundsanddisputes"
+      ],
+      "references": 0,
+      "description": "Guide for issuing refunds, handling disputes and chargebacks, and reconciling customer access with Dodo Payments"
+    },
+    {
+      "id": "subscription-integration",
+      "name": "subscription-integration",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/subscription-integration/SKILL.md",
+      "aliases": [
+        "subscription-integration",
+        "subscriptionintegration"
+      ],
+      "references": 0,
+      "description": "Guide for managing recurring subscriptions after checkout, including trials, lifecycle states, plan changes, cancellation, failed-payment recovery, proration, mandates, and on-demand charges."
+    },
+    {
+      "id": "testing-and-go-live",
+      "name": "testing-and-go-live",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/testing-and-go-live/SKILL.md",
+      "aliases": [
+        "testing-and-go-live",
+        "testingandgolive"
+      ],
+      "references": 0,
+      "description": "Guide for test-mode payment scenarios, renewal simulation, local webhook delivery tests, test and live catalog migration, and production launch checks."
+    },
+    {
+      "id": "usage-based-billing",
+      "name": "usage-based-billing",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/usage-based-billing/SKILL.md",
+      "aliases": [
+        "usage-based-billing",
+        "usagebasedbilling"
+      ],
+      "references": 0,
+      "description": "Guide for charging directly per measured API call, token, storage unit, or other consumption using meters, stable usage events, aggregation, free thresholds, and metered subscriptions."
+    },
+    {
+      "id": "webhook-integration",
+      "name": "webhook-integration",
+      "group": "10-支付-Dodo",
+      "path": "skills/vault/10-支付-Dodo/webhook-integration/SKILL.md",
+      "aliases": [
+        "webhook-integration",
+        "webhookintegration"
+      ],
+      "references": 0,
+      "description": "Complete guide for setting up and handling Dodo Payments webhooks for real-time payment event notifications."
+    },
+    {
+      "id": "skill-creator",
+      "name": "skill-creator",
+      "group": "11-skill工具",
+      "path": "skills/vault/11-skill工具/skill-creator/SKILL.md",
+      "aliases": [
+        "skill-creator",
+        "skillcreator"
+      ],
+      "references": 1,
+      "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill pe…"
+    },
+    {
+      "id": "skill-installer",
+      "name": "skill-installer",
+      "group": "11-skill工具",
+      "path": "skills/vault/11-skill工具/skill-installer/SKILL.md",
+      "aliases": [
+        "skill-installer",
+        "skillinstaller"
+      ],
+      "references": 0,
+      "description": "Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private re…"
+    },
+    {
+      "id": "docx",
+      "name": "docx",
+      "group": "12-其他",
+      "path": "skills/vault/12-其他/docx/SKILL.md",
+      "aliases": [
+        "docx"
+      ],
+      "references": 0,
+      "description": "Use this skill whenever the user wants to create, read, edit, or manipulate Word documents (.docx files). Triggers include: any mention of 'Word doc', 'word document', '.docx', or requests to produce professional documen…"
+    },
+    {
+      "id": "executing-plans",
+      "name": "executing-plans",
+      "group": "12-其他",
+      "path": "skills/vault/12-其他/executing-plans/SKILL.md",
+      "aliases": [
+        "executing-plans",
+        "executingplans"
+      ],
+      "references": 0,
+      "description": "Use when you have a written implementation plan to execute in a separate session with review checkpoints"
+    },
+    {
+      "id": "find-skills",
+      "name": "find-skills",
+      "group": "12-其他",
+      "path": "skills/vault/12-其他/find-skills/SKILL.md",
+      "aliases": [
+        "find-skills",
+        "findskills"
+      ],
+      "references": 0,
+      "description": "Helps users discover and install agent skills when they ask questions like \"how do I do X\", \"find a skill for X\", \"is there a skill that can...\", or express interest in extending capabilities. This skill should be used w…"
+    },
+    {
+      "id": "follow-builders",
+      "name": "follow-builders",
+      "group": "12-其他",
+      "path": "skills/vault/12-其他/follow-builders/SKILL.md",
+      "aliases": [
+        "follow-builders",
+        "followbuilders"
+      ],
+      "references": 0,
+      "description": "AI builders digest — monitors top AI builders on X and YouTube podcasts, remixes their content into digestible summaries. Use when the user wants AI industry insights, builder updates, or invokes /ai. No API keys or depe…"
+    },
+    {
+      "id": "guizang-ppt-skill",
+      "name": "guizang-ppt-skill",
+      "group": "12-其他",
+      "path": "skills/vault/12-其他/guizang-ppt-skill/SKILL.md",
+      "aliases": [
+        "guizang-ppt-skill",
+        "guizangpptskill"
+      ],
+      "references": 9,
+      "description": "生成横向翻页网页 PPT（单 HTML 文件），含 WebGL 背景、章节幕封、数据大字报、图片网格等模板。提供两种风格：① \"电子杂志 × 电子墨水\"（衬线 + 流体背景 + 暖色） ② \"瑞士国际主义\"（无衬线 + 网格点阵 + IKB/柠檬黄/柠檬绿/安全橙高亮）。当用户需要制作分享 / 演讲 / 发布会风格的网页 PPT，或提到\"杂志风 PPT\"、\"瑞士风 PPT\"、\"Swiss Style\"、\"horizontal swipe…"
+    },
+    {
+      "id": "pdf",
+      "name": "pdf",
+      "group": "12-其他",
+      "path": "skills/vault/12-其他/pdf/SKILL.md",
+      "aliases": [
+        "pdf"
+      ],
+      "references": 0,
+      "description": "Use this skill whenever the user mentions a PDF file or asks to produce/edit one. For read-only tasks such as reading, summarizing, extracting plain text, or answering questions from a PDF, follow this skill's read-only …"
+    },
+    {
+      "id": "tool-builder",
+      "name": "tool-builder",
+      "group": "12-其他",
+      "path": "skills/vault/12-其他/tool-builder/SKILL.md",
+      "aliases": [
+        "tool-builder",
+        "toolbuilder"
+      ],
+      "references": 0,
+      "description": "交互式创建和管理 Chat 模式的自定义 HTTP 工具。当用户想要创建新的 API 工具、配置 Chat 工具、添加自定义工具、管理自定义工具、或说\"帮我创建一个 XX 工具\"时使用此 Skill。也适用于调试、修复或删除已有的自定义工具。"
+    },
+    {
+      "id": "writing-plans",
+      "name": "writing-plans",
+      "group": "12-其他",
+      "path": "skills/vault/12-其他/writing-plans/SKILL.md",
+      "aliases": [
+        "writing-plans",
+        "writingplans"
+      ],
+      "references": 0,
+      "description": "Use when you have a spec or requirements for a multi-step task, before touching code"
+    },
+    {
+      "id": "xlsx",
+      "name": "xlsx",
+      "group": "12-其他",
+      "path": "skills/vault/12-其他/xlsx/SKILL.md",
+      "aliases": [
+        "xlsx"
+      ],
+      "references": 0,
+      "description": "Use this skill any time a spreadsheet file is the primary input or output. This means any task where the user wants to: open, read, edit, or fix an existing .xlsx, .xlsm, .csv, or .tsv file (e.g., adding columns, computi…"
+    }
+  ]
+}

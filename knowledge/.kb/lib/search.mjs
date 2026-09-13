@@ -20,7 +20,8 @@ import path from 'node:path';
 
 import { extractText } from './extract.mjs';
 import { tokenize, tokenizeQuery } from './tokenize.mjs';
-import { walkMarkdown } from './walk.mjs';
+import { retrieveFromIndex } from './retrieve.mjs';
+import { skillName, walkMarkdown } from './walk.mjs';
 
 const RRF_K = 60;
 const CANDIDATES = 400; // per ranker, before fusion
@@ -30,6 +31,12 @@ const BM25_B = 0.75;
 const BM25_IDF_POWER = 1.6;
 /** Floor for the query-coverage multiplier (see bm25()). */
 const BM25_COVERAGE_WEIGHT = 0.35;
+
+/** Name + folder go into BM25 so a later chunk still matches the skill id. */
+function lexicalText(chunk) {
+  const labels = [...new Set([chunk.name, skillName(chunk.path)].filter(Boolean))];
+  return labels.length ? `${labels.join(' ')}\n${chunk.text || ''}` : chunk.text || '';
+}
 
 /**
  * Pick the chunk within a document that best represents the query.
@@ -133,7 +140,7 @@ function pickBestChunk(chunks, path, chunkIdx) {
     let total = 0;
 
     for (let i = 0; i < this.chunks.length; i++) {
-      const terms = tokenize(this.chunks[i].text);
+      const terms = tokenize(lexicalText(this.chunks[i]));
       lengths[i] = terms.length;
       total += terms.length;
       const tf = new Map();
@@ -247,6 +254,8 @@ function pickBestChunk(chunks, path, chunkIdx) {
    * @param {boolean} [opts.dense] Set false for lexical-only.
    * @param {boolean} [opts.collapse] Fuse at file level (default true). Set
    *   false for small vaults so several passages from the same book can surface.
+   * @param {boolean} [opts.excludeNav] Drop INDEX/README before ranking.
+   * @param {boolean} [opts.demoteNav] When false, keep navigation files in place.
    */
   async search(query, opts = {}) {
     const { k = 8, kind, pathPrefix, dense = true, collapse = true } = opts;
@@ -255,6 +264,8 @@ function pickBestChunk(chunks, path, chunkIdx) {
       const c = this.chunks[i];
       if (kind && c.kind !== kind) return false;
       if (pathPrefix && !c.path.startsWith(pathPrefix)) return false;
+      if (opts.excludeNav && /(^|\/)(INDEX\.md|README\.md)$/.test(c.path)) return false;
+      if (opts.navOnly && !/(^|\/)(INDEX\.md|README\.md)$/.test(c.path)) return false;
       return true;
     };
 
@@ -274,7 +285,7 @@ function pickBestChunk(chunks, path, chunkIdx) {
     const NAVIGATION = /(^|\/)(INDEX\.md|README\.md)$/;
     const META_QUERY =
       /仓库|项目列表|有哪些|多少个|一共|几类|分类|索引|目录|怎么维护|怎么同步|知识库|结构|repo list|which repos/i;
-    const shouldDemote = !META_QUERY.test(query);
+    const shouldDemote = opts.demoteNav !== false && !META_QUERY.test(query);
 
     const demote = (list) => {
       if (!shouldDemote) return list;
@@ -379,6 +390,11 @@ function pickBestChunk(chunks, path, chunkIdx) {
       denseError: this._denseError,
       candidates: { dense: denseHits.length, lexical: lexical.length },
     };
+  }
+
+  /** Conversation retrieve: catalog first, passage search second. */
+  retrieve(query, opts = {}) {
+    return retrieveFromIndex(this, query, opts);
   }
 
   /** Read a file, optionally clamped to a line range. */

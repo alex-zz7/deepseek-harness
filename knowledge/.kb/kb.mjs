@@ -3,8 +3,9 @@
  * Command-line front end for the knowledge index — the same retrieval the MCP
  * server exposes, for testing and for use outside an agent session.
  *
- *   node kb.mjs "怎么写博客 SEO"            # hybrid search
+ *   node kb.mjs "怎么写博客 SEO"            # catalog-first retrieve
  *   node kb.mjs "GBP suspension" --kind skill -k 5
+ *   node kb.mjs "Gptimage skill 原理" --raw  # skip entity routing
  *   node kb.mjs --status
  *   node kb.mjs --read skills/INDEX.md --lines 1-40
  */
@@ -48,15 +49,24 @@ if (!query) {
   process.exit(1);
 }
 
-const res = await index.search(query, {
-  k: Number(flag('k', 8)),
-  kind: flag('kind'),
-  pathPrefix: flag('path-prefix'),
-  cacheDir: CACHE_DIR,
-});
+const scoped = Boolean(flag('kind') || flag('path-prefix') || has('raw'));
+const res = scoped
+  ? await index.search(query, {
+      k: Number(flag('k', 8)),
+      kind: flag('kind'),
+      pathPrefix: flag('path-prefix'),
+      cacheDir: CACHE_DIR,
+    })
+  : await index.retrieve(query, {
+      k: Number(flag('k', 8)),
+      cacheDir: CACHE_DIR,
+    });
 
+if (res.intent || res.resolved) {
+  console.log(`intent=${res.intent || 'search'} resolved=${res.resolved || '-'}\n`);
+}
 console.log(
-  `${res.matches.length} matches (dense=${res.dense}, dense=${res.candidates.dense}, lexical=${res.candidates.lexical})\n`,
+  `${res.matches.length} matches (dense=${res.dense}, dense=${res.candidates?.dense ?? 0}, lexical=${res.candidates?.lexical ?? 0})\n`,
 );
 for (const [i, m] of res.matches.entries()) {
   console.log(`[${i + 1}] ${m.score}  ${m.path}:${m.startLine}-${m.endLine}  (${m.kind})`);
