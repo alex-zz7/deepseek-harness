@@ -1,10 +1,37 @@
 # DeepSeek Harness
 
+本地 DeepSeek Agent 界面。macOS / Windows 一条命令打开同一个 `dsh web`。
+
+产品页：<https://sent2x.com/deepseek-harness>
+
 Local DeepSeek agent UI. The same `dsh web` surface on **macOS and Windows**.
 
 Windows does not get a second native shell. Both platforms start one `dsh web`
 server and open the browser — that is the whole product. The Mac `.app` is an
 optional WKWebView wrapper around the same server.
+
+## 软件特色
+
+- **本机运行**：会话、知识库、工作区都在你电脑上。一条 `npm start` 装插件、起服务、打开浏览器。
+- **先认文档再读正文**：问 `Gptimage skill 原理？` 会打开 `gptimage2/SKILL.md`，不再把八份无关 skill 塞进上下文。[检索对比](docs/knowledge-retrieve.md)
+- **本地知识库**：侧栏建库、挂文件、更新索引；索引在库文件夹里，不改你的原文。
+- **七种界面语言**：中文、English、繁體中文、日本語、한국어、Français、Español。设置 → 通用 → 语言。
+- **侧栏编辑器**：行号、高亮、查找替换、⌘S；外部改过的文件不会被覆盖。
+- **共用技能目录**：同时看见 `~/.cursor`、`~/.claude`、`~/.codex` 里的 skill。
+- **可选 Mac 应用**：WKWebView 壳，和浏览器共用一台服务器；支持本地 Whisper 语音输入。
+
+## 相对官方 DSH 新增
+
+官方界面只有中文 / English，没有知识库工作室，侧栏预览只读。这个仓库补上了：
+
+| 新增 | 位置 |
+|---|---|
+| 知识库工作室 + 先认文档的检索 | `plugins/knowledge-studio`、`knowledge/.kb` |
+| 五种额外语言 | `plugins/language-pack` |
+| 可编辑侧栏 | `plugins/sidebar-editor` |
+| 全局技能根 | `plugins/global-skills` |
+| Mac / Windows 一键启动 | `npm start` / `start.cmd` / `start.sh` |
+| 可选 Mac `.app` + 语音输入 | `mac/` |
 
 ## Quick start (Mac & Windows)
 
@@ -168,14 +195,12 @@ explicitly (`Shell.loginPATH()`).
 
 ## Still missing vs. Cursor
 
-- **Editable inline editor.** The sidebar preview is read-only (Shiki-rendered).
-  For now, edit via the diff/open-in-app flow and your external editor. Adding a
-  real editor means either an editable web component upstream in
-  `dsh-client-ui-sidebar-documentpreview`, or a native split pane — both are
-  larger than this shell.
 - **Go-to-definition / completion / LSP.** Out of scope for a web wrapper.
 - **Workspace root.** Defaults to `$HOME`. Change the working folder from the
   workspace selector in the UI.
+
+The right sidebar is no longer read-only: `plugins/sidebar-editor` takes over
+file tabs (see below).
 
 ## Layout
 
