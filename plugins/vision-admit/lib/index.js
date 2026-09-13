@@ -1,45 +1,31 @@
 /**
- * Let any selected model accept composer images.
+ * Native image input for every selected model.
  *
- * Session admission and the pi-ai adapter both key off `inputModalities` /
- * `input`. Third-party catalogs inherit `defaultInput: [text]`, so a paste
- * or paperclip send dies with MODEL_DOES_NOT_SUPPORT_IMAGES even when
- * Vision Mix is installed (Mix only marks its own virtual route).
+ * Session admission and the OpenAI-compat adapter both key off declared
+ * modalities. Third-party catalogs inherit `defaultInput: [text]`, so the
+ * composer rejects paperclip/paste with MODEL_DOES_NOT_SUPPORT_IMAGES even
+ * when the backend can see pixels.
  *
  * This plugin:
- *   1. Advertises `image` on every resolved/listable model so the composer
- *      admits the attachment.
- *   2. Adds `image` to OpenAI-compat `defaultInput` so those backends
- *      actually receive pixels (GPT / Claude / Gemini / …).
- *   3. Before dispatch, if the *native* catalog still lacks image, replaces
- *      image blocks with a caption from Vision Mix's image model (or official
- *      Flash) so text-only routes do not 400.
+ *   1. Advertises `image` so the composer admits attachments.
+ *   2. Writes `image` onto OpenAI-compat `defaultInput` so those backends
+ *      receive the pixels in one request — no extra vision hop.
+ *   3. For routes that still refuse images (official V4-Pro, a few GLM ids),
+ *      replaces image blocks with a caption from official Flash.
  */
 export const name = 'vision-admit';
 export const inject = ['llm'];
 
-function pluginUserMessage(content) {
-  return {
-    role: 'user',
-    id: crypto.randomUUID(),
-    content,
-    source: { kind: 'plugin', plugin: name },
-  };
-}
-
 const PI_AI_NS = 'llm-pi-ai';
-const VISION_MIX_NS = 'vision-mix';
-const FALLBACK_IMAGE_ROUTE = { provider: 'deepseek-official', model: 'deepseek-flash' };
+const CAPTION_ROUTE = { provider: 'deepseek-official', model: 'deepseek-flash' };
 
 /** OpenAI-compat ids that reject `image_url` (400: type must be text). */
 const TEXT_ONLY_MODELS = new Set(['glm-5.1', 'glm-5.2', 'glm-5.3']);
 
 const VISION_PROMPT = [
-  'You are the visual preprocessing stage for another agent. Inspect the actual pixels before answering.',
-  'Transcribe important visible text. Report layout, people, UI state, errors, numbers, and labels.',
-  'Do not invent details. Do not refuse with a generic "I cannot see images" disclaimer.',
-  'Match the language of the request when one is given.',
-  'Reply with a complete description the other agent can act on.',
+  'Inspect the image pixels and answer for another agent.',
+  'Transcribe visible text. Report layout, people, UI state, errors, numbers, and labels.',
+  'Do not invent details. Do not refuse. Match the language of the request when one is given.',
 ].join(' ');
 
 function unique(values) {
@@ -68,17 +54,13 @@ function requestText(blocks) {
     .trim();
 }
 
-function imageRoute(settings) {
-  try {
-    const value = settings?.describe?.({ redactSecrets: true })?.find((item) => item.ns === VISION_MIX_NS)?.value;
-    const route = value?.imageModel;
-    if (typeof route?.provider === 'string' && route.provider && typeof route?.model === 'string' && route.model) {
-      return { provider: route.provider, model: route.model };
-    }
-  } catch {
-    /* fall through */
-  }
-  return FALLBACK_IMAGE_ROUTE;
+function pluginUserMessage(content) {
+  return {
+    role: 'user',
+    id: crypto.randomUUID(),
+    content,
+    source: { kind: 'plugin', plugin: name },
+  };
 }
 
 async function collectText(stream) {
@@ -100,7 +82,7 @@ function captionFallback(attachment, error) {
     ...attachment.name ? [`original_name: ${attachment.name}`] : [],
     `media_type: ${attachment.mediaType}`,
     attachment.width && attachment.height ? `dimensions: ${attachment.width}x${attachment.height}` : '',
-    error ? `analysis_error: ${error}` : 'analysis: (no vision backend is configured)',
+    `analysis_error: ${error}`,
     '</img-caption>',
   ].filter(Boolean);
   return lines.join('\n');
@@ -169,14 +151,13 @@ export function apply(ctx) {
   const originalResolve = ctx.llm.resolveModelInfo.bind(ctx.llm);
   const originalList = ctx.llm.listModels.bind(ctx.llm);
   const originalStream = ctx.llm.stream.bind(ctx.llm);
-  let settings;
 
   ctx.llm.resolveModelInfo = async (provider, model, signal) => withImage(await originalResolve(provider, model, signal));
   ctx.llm.listModels = async (provider) => (await originalList(provider)).map(withImage);
 
   ctx.llm.stream = async function* (options) {
     const hasImage = options.messages.some((message) => contentHasImage(message.content));
-    if (!hasImage || options.provider === 'vision-mix') {
+    if (!hasImage) {
       yield* originalStream(options);
       return;
     }
@@ -190,13 +171,12 @@ export function apply(ctx) {
       yield* originalStream(options);
       return;
     }
-    const route = imageRoute(settings);
     const analyze = async (attachment, nearby) => {
       try {
         const prompt = nearby.length > 0 ? `${VISION_PROMPT}\n\nRequest: ${nearby}` : VISION_PROMPT;
         return await collectText(originalStream({
-          provider: route.provider,
-          model: route.model,
+          provider: CAPTION_ROUTE.provider,
+          model: CAPTION_ROUTE.model,
           messages: [pluginUserMessage([
             { type: 'text', text: prompt },
             { type: 'image', attachment },
@@ -214,14 +194,11 @@ export function apply(ctx) {
   };
 
   ctx.inject(['settings'], (sctx) => {
-    settings = sctx.settings;
     const mark = () => admitPiAiProviders(sctx.settings).catch((error) => {
       sctx.logger?.warn?.(`vision-admit: could not mark OpenAI-compat models as image-capable: ${String(error?.message ?? error)}`);
     });
     mark();
-    // llm-pi-ai may register after this fiber; retry once the catalog is up.
     const timer = setTimeout(mark, 1500);
     sctx.effect(() => () => clearTimeout(timer), 'vision-admit: delayed catalog mark');
   });
-  ctx.logger?.info?.('vision-admit: composer images are admitted on every model');
 }

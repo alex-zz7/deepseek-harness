@@ -45,12 +45,13 @@ window.__ModuleLoader__.load({
 				});
 				const operation = this.ctx.remote.session.modelCatalog().then((response) => {
 					if (!response.ok) throw new Error(`${response.error.code}: ${response.error.message}`);
+					const value = hideVirtualMixCatalog(response.value);
 					if (generation === this.generation) this.store.set({
-						value: response.value,
+						value,
 						status: "ready",
 						error: null
 					});
-					return response.value;
+					return value;
 				}).catch((error) => {
 					if (generation === this.generation) this.store.update((draft) => {
 						draft.status = "error";
@@ -236,6 +237,17 @@ window.__ModuleLoader__.load({
 		};
 		function modelSelectionProjection(value) {
 			return value === void 0 ? void 0 : value;
+		}
+		/**
+		 * Drop the virtual Mix provider if an old Vision Mix install is still
+		 * on the host. Image input is handled natively; Mix is not a model.
+		 */
+		function hideVirtualMixCatalog(catalog) {
+			return {
+				...catalog,
+				groups: catalog.groups.filter((group) => group.id !== "vision-mix"),
+				failures: catalog.failures.filter((failure) => failure.id !== "vision-mix")
+			};
 		}
 		//#endregion
 		//#region lib/types/client/service.js
