@@ -319,44 +319,36 @@ final class ProjectPickerController: NSViewController, NSTableViewDataSource, NS
 
     private func clone(owner: String, name: String) {
         guard !busy else { return }
-        busy = true
-        let target = projectsRoot.appendingPathComponent(name, isDirectory: true)
-        status.stringValue = "正在克隆 \(owner)/\(name)…"
-
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self else { return }
-            try? FileManager.default.createDirectory(at: self.projectsRoot, withIntermediateDirectories: true)
-
-            if FileManager.default.fileExists(atPath: target.path) {
-                DispatchQueue.main.async {
-                    self.busy = false
-                    self.status.stringValue = "已存在，直接打开：\(target.path)"
-                    self.register(path: target.path)
-                }
-                return
-            }
-
-            guard let result = Self.runGh(["repo", "clone", "\(owner)/\(name)", target.path]) else {
-                DispatchQueue.main.async {
-                    self.busy = false
-                    self.report("没有找到 GitHub CLI。装一个：brew install gh")
-                }
-                return
-            }
-
-            DispatchQueue.main.async {
-                self.busy = false
-                if result.status == 0 {
-                    self.status.stringValue = "已克隆到 \(target.path)"
-                    self.register(path: target.path)
-                } else {
-                    let detail = [result.error, result.output]
-                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                        .first { !$0.isEmpty } ?? "gh 返回了错误"
-                    self.report("克隆失败：\(detail)")
-                }
-            }
+        guard let base = serverBaseURL, let url = URL(string: "/sidebar-editor/clone", relativeTo: base) else {
+            report("没有可用的服务地址")
+            return
         }
+        busy = true
+        status.stringValue = "正在打开 \(owner)/\(name)…"
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["owner": owner, "name": name])
+
+        URLSession.shared.dataTask(with: request) { [weak self] data, _, error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.busy = false
+                if let error {
+                    self.report("打开仓库失败：\(error.localizedDescription)")
+                    return
+                }
+                let body = data.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]
+                guard let path = body?["path"] as? String, !path.isEmpty else {
+                    self.report((body?["message"] as? String) ?? "打开仓库失败")
+                    return
+                }
+                let reused = (body?["cloned"] as? Bool) == false
+                self.status.stringValue = reused ? "本机已有，正在打开：\(path)" : "已克隆到 \(path)"
+                self.register(path: path)
+            }
+        }.resume()
     }
 
     /// Register a directory as a workspace through the plugin route.

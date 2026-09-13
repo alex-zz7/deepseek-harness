@@ -33,6 +33,7 @@
 import { applyPinOrder, readPins, setPinned } from './pins.js';
 import { mergeUiState, readUiState } from './ui-state.js';
 import { cloneGithubRepo, createLocalFolder, listGithubRepos, listLocalFolders } from './github.js';
+import { gitCheckout, gitCommit, gitCommitAndPush, gitCreateBranch, gitPush, gitStatus, unarchiveSessions } from './git.js';
 import { rehomeLiveSession, restoreRehousings } from './rehome.js';
 
 /** Cordis plugin name. */
@@ -56,9 +57,32 @@ const CLONE_ROUTE = '/sidebar-editor/clone';
 const LOCAL_FOLDERS_ROUTE = '/sidebar-editor/local-folders';
 const MKDIR_ROUTE = '/sidebar-editor/mkdir';
 const REHOME_ROUTE = '/sidebar-editor/rehome';
+const GIT_STATUS_ROUTE = '/sidebar-editor/git-status';
+const GIT_CHECKOUT_ROUTE = '/sidebar-editor/git-checkout';
+const GIT_CREATE_BRANCH_ROUTE = '/sidebar-editor/git-create-branch';
+const GIT_COMMIT_ROUTE = '/sidebar-editor/git-commit';
+const GIT_COMMIT_PUSH_ROUTE = '/sidebar-editor/git-commit-push';
+const GIT_PUSH_ROUTE = '/sidebar-editor/git-push';
+const UNARCHIVE_ROUTE = '/sidebar-editor/unarchive';
 
 /** Cap on one request body; the editor never sends more than a file. */
 const MAX_BODY_BYTES = 16 * 1024 * 1024;
+
+/** Absolute paths of registered workspaces, used to reuse local git checkouts. */
+function workspacePaths(ctx) {
+  try {
+    return (ctx.workspaceRegistry.list() ?? []).flatMap((workspace) =>
+      typeof workspace?.path === 'string' && workspace.path.length > 0 ? [workspace.path] : [],
+    );
+  } catch {
+    return [];
+  }
+}
+
+/** @param {import('node:http').IncomingMessage} req */
+function requestUrl(req) {
+  return new URL(req.url ?? '/', 'http://127.0.0.1');
+}
 
 /**
  * Write one JSON response.
@@ -299,7 +323,7 @@ export function apply(ctx) {
               sendJson(res, 405, { code: 'method-not-allowed' });
               return;
             }
-            sendJson(res, 200, { ok: true, repos: await listGithubRepos() });
+            sendJson(res, 200, { ok: true, repos: await listGithubRepos(workspacePaths(ctx)) });
           } catch (error) {
             sendJson(res, error?.code === 'gh-missing' ? 503 : 500, {
               code: error?.code ?? 'github-failed',
@@ -332,7 +356,7 @@ export function apply(ctx) {
               sendJson(res, 400, { code: 'bad-request', message: 'owner and name are required' });
               return;
             }
-            sendJson(res, 200, { ok: true, ...(await cloneGithubRepo(owner, name)) });
+            sendJson(res, 200, { ok: true, ...(await cloneGithubRepo(owner, name, { searchPaths: workspacePaths(ctx) })) });
           } catch (error) {
             const status = error?.code === 'bad-request' ? 400 : error?.code === 'gh-missing' ? 503 : 500;
             sendJson(res, status, {
@@ -567,6 +591,228 @@ export function apply(ctx) {
         },
       }),
     `sidebar-editor: POST ${WRITE_ROUTE}`,
+  );
+
+  ctx.effect(
+    () =>
+      ctx.webServer.register({
+        kind: 'exact',
+        path: GIT_STATUS_ROUTE,
+        handler: async (req, res) => {
+          try {
+            let path = '';
+            if (req.method === 'GET') {
+              path = requestUrl(req).searchParams.get('path') ?? '';
+            } else if (req.method === 'POST') {
+              const parsed = await readJsonBody(req);
+              if (parsed.error) {
+                sendJson(res, 400, { code: parsed.error });
+                return;
+              }
+              path = typeof parsed.value?.path === 'string' ? parsed.value.path : '';
+            } else {
+              sendJson(res, 405, { code: 'method-not-allowed' });
+              return;
+            }
+            if (!path.startsWith('/')) {
+              sendJson(res, 400, { code: 'bad-request', message: 'path must be absolute' });
+              return;
+            }
+            sendJson(res, 200, { ok: true, ...(await gitStatus(path)) });
+          } catch (error) {
+            sendJson(res, error?.code === 'git-missing' ? 503 : 500, {
+              code: error?.code ?? 'git-failed',
+              message: String(error?.message ?? error),
+            });
+          }
+        },
+      }),
+    `sidebar-editor: ${GIT_STATUS_ROUTE}`,
+  );
+
+  ctx.effect(
+    () =>
+      ctx.webServer.register({
+        kind: 'exact',
+        path: GIT_CHECKOUT_ROUTE,
+        handler: async (req, res) => {
+          try {
+            if (req.method !== 'POST') {
+              sendJson(res, 405, { code: 'method-not-allowed' });
+              return;
+            }
+            const parsed = await readJsonBody(req);
+            if (parsed.error) {
+              sendJson(res, 400, { code: parsed.error });
+              return;
+            }
+            const path = typeof parsed.value?.path === 'string' ? parsed.value.path : '';
+            const branch = typeof parsed.value?.branch === 'string' ? parsed.value.branch : '';
+            if (!path.startsWith('/') || !branch) {
+              sendJson(res, 400, { code: 'bad-request', message: 'path and branch are required' });
+              return;
+            }
+            sendJson(res, 200, { ok: true, ...(await gitCheckout(path, branch)) });
+          } catch (error) {
+            const status = error?.code === 'bad-request' ? 400 : 500;
+            sendJson(res, status, { code: error?.code ?? 'git-failed', message: String(error?.message ?? error) });
+          }
+        },
+      }),
+    `sidebar-editor: ${GIT_CHECKOUT_ROUTE}`,
+  );
+
+  ctx.effect(
+    () =>
+      ctx.webServer.register({
+        kind: 'exact',
+        path: GIT_CREATE_BRANCH_ROUTE,
+        handler: async (req, res) => {
+          try {
+            if (req.method !== 'POST') {
+              sendJson(res, 405, { code: 'method-not-allowed' });
+              return;
+            }
+            const parsed = await readJsonBody(req);
+            if (parsed.error) {
+              sendJson(res, 400, { code: parsed.error });
+              return;
+            }
+            const path = typeof parsed.value?.path === 'string' ? parsed.value.path : '';
+            const name = typeof parsed.value?.name === 'string' ? parsed.value.name : '';
+            const from = typeof parsed.value?.from === 'string' ? parsed.value.from : '';
+            if (!path.startsWith('/') || !name) {
+              sendJson(res, 400, { code: 'bad-request', message: 'path and name are required' });
+              return;
+            }
+            sendJson(res, 200, { ok: true, ...(await gitCreateBranch(path, name, from || undefined)) });
+          } catch (error) {
+            const status = error?.code === 'bad-request' || error?.code === 'already-exists' ? 400 : 500;
+            sendJson(res, status, { code: error?.code ?? 'git-failed', message: String(error?.message ?? error) });
+          }
+        },
+      }),
+    `sidebar-editor: ${GIT_CREATE_BRANCH_ROUTE}`,
+  );
+
+  ctx.effect(
+    () =>
+      ctx.webServer.register({
+        kind: 'exact',
+        path: GIT_COMMIT_ROUTE,
+        handler: async (req, res) => {
+          try {
+            if (req.method !== 'POST') {
+              sendJson(res, 405, { code: 'method-not-allowed' });
+              return;
+            }
+            const parsed = await readJsonBody(req);
+            if (parsed.error) {
+              sendJson(res, 400, { code: parsed.error });
+              return;
+            }
+            const path = typeof parsed.value?.path === 'string' ? parsed.value.path : '';
+            const message = typeof parsed.value?.message === 'string' ? parsed.value.message : '';
+            if (!path.startsWith('/')) {
+              sendJson(res, 400, { code: 'bad-request', message: 'path is required' });
+              return;
+            }
+            sendJson(res, 200, { ok: true, ...(await gitCommit(path, message)) });
+          } catch (error) {
+            const status = error?.code === 'bad-request' ? 400 : 500;
+            sendJson(res, status, { code: error?.code ?? 'git-failed', message: String(error?.message ?? error) });
+          }
+        },
+      }),
+    `sidebar-editor: ${GIT_COMMIT_ROUTE}`,
+  );
+
+  ctx.effect(
+    () =>
+      ctx.webServer.register({
+        kind: 'exact',
+        path: GIT_COMMIT_PUSH_ROUTE,
+        handler: async (req, res) => {
+          try {
+            if (req.method !== 'POST') {
+              sendJson(res, 405, { code: 'method-not-allowed' });
+              return;
+            }
+            const parsed = await readJsonBody(req);
+            if (parsed.error) {
+              sendJson(res, 400, { code: parsed.error });
+              return;
+            }
+            const path = typeof parsed.value?.path === 'string' ? parsed.value.path : '';
+            const message = typeof parsed.value?.message === 'string' ? parsed.value.message : '';
+            if (!path.startsWith('/')) {
+              sendJson(res, 400, { code: 'bad-request', message: 'path is required' });
+              return;
+            }
+            sendJson(res, 200, { ok: true, ...(await gitCommitAndPush(path, message)) });
+          } catch (error) {
+            const status = error?.code === 'bad-request' ? 400 : 500;
+            sendJson(res, status, { code: error?.code ?? 'git-failed', message: String(error?.message ?? error) });
+          }
+        },
+      }),
+    `sidebar-editor: ${GIT_COMMIT_PUSH_ROUTE}`,
+  );
+
+  ctx.effect(
+    () =>
+      ctx.webServer.register({
+        kind: 'exact',
+        path: GIT_PUSH_ROUTE,
+        handler: async (req, res) => {
+          try {
+            if (req.method !== 'POST') {
+              sendJson(res, 405, { code: 'method-not-allowed' });
+              return;
+            }
+            const parsed = await readJsonBody(req);
+            if (parsed.error) {
+              sendJson(res, 400, { code: parsed.error });
+              return;
+            }
+            const path = typeof parsed.value?.path === 'string' ? parsed.value.path : '';
+            if (!path.startsWith('/')) {
+              sendJson(res, 400, { code: 'bad-request', message: 'path is required' });
+              return;
+            }
+            sendJson(res, 200, { ok: true, ...(await gitPush(path)) });
+          } catch (error) {
+            sendJson(res, 500, { code: error?.code ?? 'git-failed', message: String(error?.message ?? error) });
+          }
+        },
+      }),
+    `sidebar-editor: ${GIT_PUSH_ROUTE}`,
+  );
+
+  ctx.effect(
+    () =>
+      ctx.webServer.register({
+        kind: 'exact',
+        path: UNARCHIVE_ROUTE,
+        handler: async (req, res) => {
+          try {
+            if (req.method !== 'POST') {
+              sendJson(res, 405, { code: 'method-not-allowed' });
+              return;
+            }
+            const parsed = await readJsonBody(req);
+            if (parsed.error) {
+              sendJson(res, 400, { code: parsed.error });
+              return;
+            }
+            const sessionIds = Array.isArray(parsed.value?.sessionIds) ? parsed.value.sessionIds : [];
+            sendJson(res, 200, { ok: true, ...(await unarchiveSessions(ctx.workspaceRegistry, sessionIds)) });
+          } catch (error) {
+            sendJson(res, 500, { code: error?.code ?? 'unarchive-failed', message: String(error?.message ?? error) });
+          }
+        },
+      }),
+    `sidebar-editor: ${UNARCHIVE_ROUTE}`,
   );
 
   void restoreRehousings(ctx).catch((error) => {

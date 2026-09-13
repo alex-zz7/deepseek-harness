@@ -14801,6 +14801,18 @@ window.__ModuleLoader__.load({
 				onLostPointerCapture: onPointerCancel
 			});
 		}
+		/**
+		* Upper bound on the "settling" composer hide.
+		*
+		* Upstream hides the composer seat (`visibility:hidden`) while a session
+		* open is in flight and the sidebar summary does not yet call that session
+		* blank. Nothing ends that wait on its own: when an open stalls — a hung
+		* page read, a continuable subagent whose parent availability never
+		* resolves — the seat stays hidden for the life of the page and the input
+		* box only comes back on a reload. Past this bound the hidden phase is
+		* abandoned and the composer renders instead.
+		*/
+		const SETTLE_HIDE_LIMIT_MS = 1500;
 		function ConversationRoot({ sessionId, useSession, useSessions, useSessionPendingInteraction, useWorkspaces, useConversation, useInput, useComposerBlock, renderSlot, renderSlotChain, selectWorkspace, loadOlder, t }) {
 			const session = useSession((s) => s);
 			const pendingInteraction = useSessionPendingInteraction((snapshot) => sessionId === void 0 ? void 0 : snapshot.get(sessionId));
@@ -14898,6 +14910,20 @@ window.__ModuleLoader__.load({
 			}, [sessionId, openState, session?.hasMore, session?.loadingOlder, session?.running, loadOlder]);
 			const parentAvailabilityPending = session?.subagent?.address.mode === "continuable" && session.subagent.parentAvailable === void 0;
 			const settling = sessionId !== void 0 && (shellPhase === "blank" && openState === "loading" && summaryBlank !== true || parentAvailabilityPending);
+			/**
+			* `settling` is a transient hide, so it is time-boxed: a stall must not
+			* leave the composer invisible forever (see SETTLE_HIDE_LIMIT_MS).
+			*/
+			const [settleExpired, setSettleExpired] = (0, react.useState)(false);
+			(0, react.useEffect)(() => {
+				if (!settling) {
+					setSettleExpired(false);
+					return;
+				}
+				const timer = setTimeout(() => setSettleExpired(true), SETTLE_HIDE_LIMIT_MS);
+				return () => clearTimeout(timer);
+			}, [settling]);
+			const settleHidden = settling && !settleExpired;
 			const hero = sessionId === void 0 || shellPhase === "blank" && (openState === "open" || summaryBlank === true);
 			const zone = session === void 0 || inputState === void 0 ? void 0 : {
 				session,
@@ -14931,7 +14957,10 @@ window.__ModuleLoader__.load({
 							setPickerOpen(false);
 						}
 					}),
-					renderSlot("conversation.hero.agentPreset", {})
+					renderSlot("conversation.hero.agentPreset", {}),
+					renderSlot("conversation.hero.branch", {
+						cwd: pendingWorkspace?.path ?? sessionWorkspace?.path ?? cwd
+					})
 				]
 			});
 			const inert = sessionId === void 0 || hero && chipTitle === void 0;
@@ -14969,7 +14998,7 @@ window.__ModuleLoader__.load({
 					inputBar
 				]
 			});
-			const phase = settling ? "settling" : hero ? "hero" : "active";
+			const phase = settleHidden ? "settling" : hero ? "hero" : "active";
 			const composer = renderSlotChain("conversation.composer", {
 				sessionId,
 				session,
@@ -16686,6 +16715,10 @@ window.__ModuleLoader__.load({
 					"conversation.hero.agentPreset": {
 						kind: "single",
 						scope: "root"
+					},
+					"conversation.hero.branch": {
+						kind: "single",
+						scope: "root"
 					}
 				},
 				inject: (sessionId) => ({
@@ -16767,6 +16800,11 @@ window.__ModuleLoader__.load({
 					}
 				})
 			}, ConversationSessionHeader);
+			/** Disposers of every composer-bar registration this plugin has mounted. */
+			const composerBarDisposers = [];
+			/** Re-mounts the composer bar when the slot core retires a crashed entry. */
+			let composerBarHeals = 0;
+			const COMPOSER_BAR_HEAL_LIMIT = 3;
 			const registerComposerBar = () => slots.register({
 				name: "conversation.composer.bar",
 				locale: NS,
@@ -16874,6 +16912,37 @@ window.__ModuleLoader__.load({
 					};
 				}
 			}, InputBar);
+			/** Register the bar and remember how to take it back down. */
+			const mountComposerBar = () => {
+				const dispose = registerComposerBar();
+				composerBarDisposers.push(dispose);
+				return dispose;
+			};
+			/**
+			* A crashed slot entry is retired for the life of the page: the slot core
+			* keeps abdicated entries in a process-wide WeakSet, and a `single` slot
+			* whose only entry is retired renders an empty cell instead of the
+			* caller's fallback. So one commit-phase error anywhere in the composer's
+			* render tree — an external DOM writer detaching a node React still owns
+			* is the usual cause — removes the input box until the page is reloaded.
+			* Supervise the bar entry and mount a fresh one when that happens.
+			*
+			* Re-registering is safe because disposing an entry undeclares its child
+			* slots, and `slots.inject` re-runs every contribution into a slot each
+			* time its declaration comes back.
+			*/
+			const superviseComposerBar = () => slots.onEntryError((key, entry, error, info) => {
+				if (key !== "conversation.composer.bar" || info?.abdicated !== true) return;
+				if (composerBarHeals >= COMPOSER_BAR_HEAL_LIMIT) return;
+				composerBarHeals += 1;
+				console.error("ui-conversation: composer bar entry crashed; re-mounting it", error);
+				try {
+					for (const dispose of composerBarDisposers.splice(0)) dispose();
+					mountComposerBar();
+				} catch (failure) {
+					console.error("ui-conversation: composer bar re-mount failed", failure);
+				}
+			});
 			slots.inject("main", function* () {
 				yield slots.register({
 					name: "main",
@@ -16886,8 +16955,9 @@ window.__ModuleLoader__.load({
 				yield registerConversationRoot();
 				yield registerConversationSession();
 				yield registerConversationHeader();
-				yield registerComposerBar();
+				yield mountComposerBar();
 			});
+			ctx.effect(superviseComposerBar, "ui-conversation: composer bar supervision");
 			ctx.plugin(ConversationController, {
 				input: inputHub,
 				blocks: composerBlocks,

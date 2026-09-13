@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { mkdir, readdir, stat } from 'node:fs/promises';
+import { findExistingCheckout, indexLocalGithubCheckouts } from './git.js';
 
 const PROJECTS_ROOT = join(homedir(), 'Projects');
 
@@ -68,8 +69,11 @@ export function runGh(args, ghPath) {
   });
 }
 
-/** @returns {Promise<{ owner: string, name: string, isPrivate: boolean }[]>} */
-export async function listGithubRepos() {
+/**
+ * @param {string[]} [searchPaths]
+ * @returns {Promise<{ owner: string, name: string, isPrivate: boolean, localPath: string|null }[]>}
+ */
+export async function listGithubRepos(searchPaths = []) {
   const gh = await resolveGh();
   if (!gh) {
     const err = new Error('没有找到 GitHub CLI。装一个：brew install gh，然后 gh auth login');
@@ -87,19 +91,34 @@ export async function listGithubRepos() {
     throw err;
   }
   const list = JSON.parse(result.output || '[]');
+  const local = await indexLocalGithubCheckouts(searchPaths);
   return list.flatMap((entry) => {
     const full = typeof entry.nameWithOwner === 'string' ? entry.nameWithOwner : '';
     const parts = full.split('/');
     if (parts.length !== 2) return [];
-    return [{ owner: parts[0], name: parts[1], isPrivate: Boolean(entry.isPrivate) }];
+    const owner = parts[0];
+    const name = parts[1];
+    return [
+      {
+        owner,
+        name,
+        isPrivate: Boolean(entry.isPrivate),
+        localPath: local.get(`${owner}/${name}`.toLowerCase()) ?? null,
+      },
+    ];
   });
 }
 
 /**
- * Clone `owner/name` into ~/Projects/<name>. Reuses the folder when it exists.
+ * Open `owner/name`. Prefer an existing local checkout (registered workspace
+ * or a folder under Desktop / Documents / Projects that already tracks that
+ * remote). Only clone into ~/Projects/<name> when nothing matches.
+ * @param {string} owner
+ * @param {string} name
+ * @param {{ searchPaths?: string[] }} [options]
  * @returns {Promise<{ path: string, cloned: boolean }>}
  */
-export async function cloneGithubRepo(owner, name) {
+export async function cloneGithubRepo(owner, name, options = {}) {
   if (!/^[\w.-]+$/.test(owner) || !/^[\w.-]+$/.test(name)) {
     const err = new Error('invalid repository identity');
     err.code = 'bad-request';
@@ -111,6 +130,8 @@ export async function cloneGithubRepo(owner, name) {
     err.code = 'gh-missing';
     throw err;
   }
+  const existing = await findExistingCheckout(owner, name, options.searchPaths ?? []);
+  if (existing) return { path: existing, cloned: false };
   await mkdir(PROJECTS_ROOT, { recursive: true });
   const target = join(PROJECTS_ROOT, name);
   try {

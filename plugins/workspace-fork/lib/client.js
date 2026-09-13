@@ -1163,6 +1163,9 @@ window.__ModuleLoader__.load({
 			const label = row.pinned === true ? row.label : row.workspaceId === void 0 ? t("group.ungrouped") : row.label;
 			const active = group.expanded && group.containsCurrent;
 			const [menuOpen, setMenuOpen] = (0, react.useState)(false);
+			// The Ungrouped bucket is synthetic: there is no workspace behind it to
+			// rename or delete, so its only entry is the one that empties the bucket.
+			const clearable = row.pinned !== true && row.workspaceId === void 0 && row.cwd === void 0 && actions?.clear !== void 0;
 			const vaultMenuItems = actions?.ingest === void 0 ? [] : [{
 				id: "settings",
 				label: t("kb.settings")
@@ -1186,6 +1189,12 @@ window.__ModuleLoader__.load({
 				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutline16, {}),
 				danger: true
 			}]];
+			const menuItems = clearable ? [{
+				id: "clear",
+				label: t("clear.ungrouped"),
+				icon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutline16, {}),
+				danger: true
+			}] : workspaceMenuItems;
 			const ownRow = (0, react_jsx_runtime.jsxs)("div", {
 				className: clsx(Rows_module_css_default.projectRow, menuOpen && Rows_module_css_default.menuOpen),
 				role: "treeitem",
@@ -1226,9 +1235,14 @@ window.__ModuleLoader__.load({
 							onClose: () => {
 								setMenuOpen(false);
 							},
-							items: workspaceMenuItems,
+							items: menuItems,
 							onSelect: (id) => {
 								setMenuOpen(false);
+								if (clearable) {
+									/* v8 ignore next -- the clear menu ships exactly one row. */
+									if (id === "clear") actions.clear();
+									return;
+								}
 								if (id === "settings") actions.settings?.();
 								else if (id === "ingest") actions.ingest();
 								else if (id === "rebuild") actions.rebuild();
@@ -1241,7 +1255,7 @@ window.__ModuleLoader__.load({
 							anchor: (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: Rows_module_css_default.iconButton,
-								"aria-label": t("actions.workspace.aria", { name: label }),
+								"aria-label": clearable ? t("actions.ungrouped.aria") : t("actions.workspace.aria", { name: label }),
 								onClick: (e) => {
 									e.stopPropagation();
 									setMenuOpen((v) => !v);
@@ -1429,7 +1443,8 @@ window.__ModuleLoader__.load({
 		* @param props.onOpen - open a session by id.
 		* @param props.onRename - open the session rename dialog (id + current title).
 		* @param props.onFork - fork a session at its last completed turn.
-		* @param props.onArchive - archive a session by id.
+		* @param props.onArchive - open the archive confirmation for a session node (the
+		* node carries the activity the dialog has to warn about).
 		* @param props.onReveal - scroll this row into view after search navigation, then acknowledge it.
 		* @param props.drag - optional draggable-row wiring.
 		* @param props.flat - omit the empty status slot in the hierarchy-free flat list.
@@ -1519,7 +1534,7 @@ window.__ModuleLoader__.load({
 									setMenuOpen(false);
 									if (id === "rename") onRename(node.id, row.title);
 									if (id === "fork") onFork(node.id);
-									if (id === "archive") onArchive(node.id);
+									if (id === "archive") onArchive(node);
 								},
 								portal: true,
 								closeOnPointerLeave: true,
@@ -1758,15 +1773,20 @@ window.__ModuleLoader__.load({
 					setBusy(false);
 				});
 			}, [createWorkspace, onClose, onPick]);
-			const cloneOne = (0, react.useCallback)((owner, name) => {
+			const cloneOne = (0, react.useCallback)((owner, name, localPath) => {
+				if (typeof localPath === "string" && localPath.length > 0) {
+					setStatus(`本机已有 ${owner}/${name}，正在打开…`);
+					return adopt(localPath);
+				}
 				setBusy(true);
-				setStatus(`正在克隆 ${owner}/${name}…`);
+				setStatus(`正在打开 ${owner}/${name}…`);
 				return fetch("/sidebar-editor/clone", {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify({ owner, name })
 				}).then((response) => response.json()).then((body) => {
-					if (!body?.path) throw new Error(body?.message || "克隆失败");
+					if (!body?.path) throw new Error(body?.message || "打开仓库失败");
+					if (body.cloned === false) setStatus(`本机已有，正在打开…`);
 					return adopt(body.path);
 				}).catch((error) => {
 					setBusy(false);
@@ -1822,7 +1842,7 @@ window.__ModuleLoader__.load({
 				const chosen = visibleRepos.filter((repo) => picked.has(`${repo.owner}/${repo.name}`));
 				if (chosen.length === 0) return;
 				(async () => {
-					for (const repo of chosen) await cloneOne(repo.owner, repo.name);
+					for (const repo of chosen) await cloneOne(repo.owner, repo.name, repo.localPath);
 				})();
 			};
 			return (0, react_jsx_runtime.jsxs)("div", {
@@ -1934,12 +1954,12 @@ window.__ModuleLoader__.load({
 										const key = `${repo.owner}/${repo.name}`;
 										return (0, react_jsx_runtime.jsx)(CursorRow, {
 											icon: ICON_FOLDER,
-											label: repo.name,
+											label: repo.localPath ? `${repo.name} · 本机` : repo.name,
 											checked: multi && picked.has(key),
 											onClick: () => {
 												if (busy) return;
 												if (multi) toggleRepo(key);
-												else cloneOne(repo.owner, repo.name);
+												else cloneOne(repo.owner, repo.name, repo.localPath);
 											}
 										}, key);
 									}) : visibleFolders.map((folder) => (0, react_jsx_runtime.jsx)(CursorRow, {
@@ -2184,7 +2204,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/deepseek-harness/deepseek-harness/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.module.css.mjs
-		const css = ".bhn1Oq_root{--dsh-session-list-edge-inset:var(--dsh-sidebar-inline-padding);--dsh-session-list-scrollbar-width:8px;--dsh-session-list-scrollbar-offset:2px;box-sizing:border-box;min-height:0;padding-right:var(--dsh-session-list-edge-inset);flex-direction:column;flex:1;display:flex}.bhn1Oq_root.bhn1Oq_rail{padding-right:0}.bhn1Oq_iconButton{corner-shape:round;cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_iconButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_sectionHeader{box-sizing:border-box;height:36px;color:var(--dsw-alias-label-tertiary);border-radius:12px;flex:none;justify-content:flex-end;align-items:center;gap:4px;margin-bottom:4px;padding-left:4px;display:flex;overflow:hidden}.bhn1Oq_root:not(.bhn1Oq_rail) .bhn1Oq_sectionHeader{margin-top:2px;margin-right:-4px}.bhn1Oq_sectionLabel{white-space:nowrap;opacity:1;visibility:visible;min-width:0;max-width:45%;transition:max-width .18s var(--ds-ease-in-out), margin-right .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex:none;line-height:20px;overflow:hidden}.bhn1Oq_sectionLabelHidden{opacity:0;visibility:hidden;max-width:0;margin-right:-4px;transition-delay:0s,0s,0s,0s,.18s;transform:translate(-4px)}.bhn1Oq_searchSlot{box-sizing:border-box;min-width:0;max-width:28px;transition:max-width .18s var(--ds-ease-in-out), padding-left .18s var(--ds-ease-in-out);flex:1;align-items:center;margin-left:auto;padding-left:0;display:flex}.bhn1Oq_searchSlotExpanded{max-width:100%;padding-left:0}.bhn1Oq_headerActions{opacity:1;visibility:visible;max-width:60px;transition:max-width .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex:none;align-items:center;gap:4px;display:flex;overflow:hidden}.bhn1Oq_headerActionsHidden{opacity:0;visibility:hidden;pointer-events:none;max-width:0;transition-delay:0s,0s,0s,.18s;transform:translate(4px)}.bhn1Oq_search{box-sizing:border-box;corner-shape:round;cursor:text;width:100%;height:28px;color:var(--dsw-alias-label-secondary);transition:width .18s var(--ds-ease-in-out), padding .18s var(--ds-ease-in-out), border-color .18s var(--ds-ease-in-out), background-color .18s var(--ds-ease-in-out);background:0 0;border:none;border-radius:50%;flex:none;align-items:center;gap:0;margin:0;padding:0;display:flex;overflow:hidden}.bhn1Oq_searchExpanded{border:.5px solid var(--dsw-alias-border-l4);width:calc(100% + 4px);height:30px;color:var(--dsw-alias-label-caption);background:0 0;border-radius:10px;margin-inline:-2px;padding:0 4px 0 0}.bhn1Oq_searchButton{corner-shape:round;cursor:pointer;width:28px;height:28px;color:inherit;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_searchExpanded .bhn1Oq_searchButton{width:28px;height:30px}.bhn1Oq_searchButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_searchExpanded .bhn1Oq_searchButton:hover{background:0 0}.bhn1Oq_searchInput{opacity:0;pointer-events:none;width:0;min-width:0;color:var(--dsw-alias-label-primary);transition:opacity .12s var(--ds-ease-in-out);background:0 0;border:none;outline:none;flex:1;font-size:13px;line-height:18px}.bhn1Oq_searchExpanded .bhn1Oq_searchInput{opacity:1;pointer-events:auto;margin-left:-2px}.bhn1Oq_searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}.bhn1Oq_clearButton{corner-shape:round;cursor:pointer;width:24px;height:24px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_clearButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_rail .bhn1Oq_sectionHeader{justify-content:flex-start;gap:0;margin-bottom:12px;padding-left:0}.bhn1Oq_rail .bhn1Oq_headerActions{max-width:none}.bhn1Oq_rail .bhn1Oq_iconButton{width:36px;height:36px;color:var(--dsw-alias-label-primary)}.bhn1Oq_rail .bhn1Oq_search{background:0 0;border-color:#0000;gap:0;width:36px;height:36px;margin:0 0 12px;padding:0}.bhn1Oq_rail .bhn1Oq_searchButton{width:36px;height:36px;color:var(--dsw-alias-label-primary)}.bhn1Oq_rail .bhn1Oq_searchButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_listArea{min-height:0;margin-left:-4px;margin-right:calc(-1 * var(--dsh-session-list-edge-inset));flex-direction:column;flex:1;padding-left:4px;display:flex;overflow:visible}.bhn1Oq_rail .bhn1Oq_listArea{margin-left:0;margin-right:0;padding-left:0}.bhn1Oq_treeBody{flex-direction:column;flex:1;min-height:0;display:flex;position:relative}.bhn1Oq_fade{left:0;right:var(--dsh-session-list-edge-inset);background:linear-gradient(to bottom, transparent, var(--dsw-specific-sidebar-fill));pointer-events:none;height:24px;position:absolute;bottom:0}.bhn1Oq_wide{animation:bhn1Oq_wide-in .2s var(--ds-ease-in-out)}@keyframes bhn1Oq_wide-in{0%{opacity:0}}.bhn1Oq_list{min-height:0;margin-left:-4px;margin-right:var(--dsh-session-list-scrollbar-offset);padding-left:4px;padding-right:calc(var(--dsh-session-list-edge-inset) - var(--dsh-session-list-scrollbar-width) - var(--dsh-session-list-scrollbar-offset));scrollbar-gutter:stable;flex:1;padding-bottom:16px;overflow-y:auto}.bhn1Oq_flatList>*+*,.bhn1Oq_searchTree>[role=treeitem]+[role=treeitem],.bhn1Oq_groupSection>*+*{margin-top:2px}.bhn1Oq_searchStatus,.bhn1Oq_searchWarning{color:var(--dsw-alias-label-tertiary);padding:10px 12px;font-size:12px;line-height:18px}.bhn1Oq_searchWarning{color:var(--dsw-alias-label-secondary)}.bhn1Oq_groupSection{position:relative}.bhn1Oq_groupSection+.bhn1Oq_groupSection{margin-top:4px}.bhn1Oq_listTopDropIndicator,.bhn1Oq_workspaceDropBefore:before,.bhn1Oq_workspaceDropAfter:after{content:\"\";z-index:1;background:linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat, linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat, linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;pointer-events:none;height:12px;position:absolute;left:0;right:0}.bhn1Oq_listTopDropIndicator{top:-8px;left:0;right:var(--dsh-session-list-edge-inset)}.bhn1Oq_listTopDropActive>.bhn1Oq_workspaceDropBefore:first-child:before{display:none}.bhn1Oq_workspaceDropBefore:before{top:-8px}.bhn1Oq_workspaceDropAfter:after{bottom:-8px}.bhn1Oq_sessionOverflowButton{cursor:pointer;text-align:left;width:100%;height:28px;color:var(--dsw-alias-label-tertiary);background:0 0;border:none;border-radius:8px;padding:0 12px 0 28px;font-size:12px}.bhn1Oq_groupSection>.bhn1Oq_sessionOverflowButton{margin-top:0}.bhn1Oq_sessionOverflowButton:hover{color:var(--dsw-alias-label-secondary);background:0 0}.bhn1Oq_empty{color:var(--dsw-alias-label-tertiary);padding:16px 12px;font-size:13px}.bhn1Oq_renameInput{box-sizing:border-box;border:.5px solid var(--dsw-alias-border-l4);width:100%;height:44px;color:var(--dsw-alias-label-primary);background:0 0;border-radius:22px;outline:none;padding:7px 14px;font-size:14px;font-weight:400;line-height:22px}.bhn1Oq_renameInput:disabled{color:var(--dsw-alias-label-dimmed)}.bhn1Oq_renameError{color:var(--dsw-alias-state-error-primary);margin-top:8px;font-size:12px;line-height:18px}.bhn1Oq_deleteAction:not(:disabled){color:var(--dsw-alias-state-error-primary)}.bhn1Oq_deleteStatus{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}@media (prefers-reduced-motion:reduce){.bhn1Oq_wide{animation:none}.bhn1Oq_search,.bhn1Oq_sectionLabel,.bhn1Oq_searchSlot,.bhn1Oq_searchInput,.bhn1Oq_headerActions{transition:none}}";
+		const css = ".bhn1Oq_root{--dsh-session-list-edge-inset:var(--dsh-sidebar-inline-padding);--dsh-session-list-scrollbar-width:8px;--dsh-session-list-scrollbar-offset:2px;box-sizing:border-box;min-height:0;padding-right:var(--dsh-session-list-edge-inset);flex-direction:column;flex:1;display:flex}.bhn1Oq_root.bhn1Oq_rail{padding-right:0}.bhn1Oq_iconButton{corner-shape:round;cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_iconButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_sectionHeader{box-sizing:border-box;height:36px;color:var(--dsw-alias-label-tertiary);border-radius:12px;flex:none;justify-content:flex-end;align-items:center;gap:4px;margin-bottom:4px;padding-left:4px;display:flex;overflow:hidden}.bhn1Oq_root:not(.bhn1Oq_rail) .bhn1Oq_sectionHeader{margin-top:2px;margin-right:-4px}.bhn1Oq_sectionLabel{white-space:nowrap;opacity:1;visibility:visible;min-width:0;max-width:45%;transition:max-width .18s var(--ds-ease-in-out), margin-right .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex:none;line-height:20px;overflow:hidden}.bhn1Oq_sectionLabelHidden{opacity:0;visibility:hidden;max-width:0;margin-right:-4px;transition-delay:0s,0s,0s,0s,.18s;transform:translate(-4px)}.bhn1Oq_searchSlot{box-sizing:border-box;min-width:0;max-width:28px;transition:max-width .18s var(--ds-ease-in-out), padding-left .18s var(--ds-ease-in-out);flex:1;align-items:center;margin-left:auto;padding-left:0;display:flex}.bhn1Oq_searchSlotExpanded{max-width:100%;padding-left:0}.bhn1Oq_headerActions{opacity:1;visibility:visible;max-width:60px;transition:max-width .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex:none;align-items:center;gap:4px;display:flex;overflow:hidden}.bhn1Oq_headerActionsHidden{opacity:0;visibility:hidden;pointer-events:none;max-width:0;transition-delay:0s,0s,0s,.18s;transform:translate(4px)}.bhn1Oq_search{box-sizing:border-box;corner-shape:round;cursor:text;width:100%;height:28px;color:var(--dsw-alias-label-secondary);transition:width .18s var(--ds-ease-in-out), padding .18s var(--ds-ease-in-out), border-color .18s var(--ds-ease-in-out), background-color .18s var(--ds-ease-in-out);background:0 0;border:none;border-radius:50%;flex:none;align-items:center;gap:0;margin:0;padding:0;display:flex;overflow:hidden}.bhn1Oq_searchExpanded{border:.5px solid var(--dsw-alias-border-l4);width:calc(100% + 4px);height:30px;color:var(--dsw-alias-label-caption);background:0 0;border-radius:10px;margin-inline:-2px;padding:0 4px 0 0}.bhn1Oq_searchButton{corner-shape:round;cursor:pointer;width:28px;height:28px;color:inherit;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_searchExpanded .bhn1Oq_searchButton{width:28px;height:30px}.bhn1Oq_searchButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_searchExpanded .bhn1Oq_searchButton:hover{background:0 0}.bhn1Oq_searchInput{opacity:0;pointer-events:none;width:0;min-width:0;color:var(--dsw-alias-label-primary);transition:opacity .12s var(--ds-ease-in-out);background:0 0;border:none;outline:none;flex:1;font-size:13px;line-height:18px}.bhn1Oq_searchExpanded .bhn1Oq_searchInput{opacity:1;pointer-events:auto;margin-left:-2px}.bhn1Oq_searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}.bhn1Oq_clearButton{corner-shape:round;cursor:pointer;width:24px;height:24px;color:var(--dsw-alias-label-secondary);background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bhn1Oq_clearButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_rail .bhn1Oq_sectionHeader{justify-content:flex-start;gap:0;margin-bottom:12px;padding-left:0}.bhn1Oq_rail .bhn1Oq_headerActions{max-width:none}.bhn1Oq_rail .bhn1Oq_iconButton{width:36px;height:36px;color:var(--dsw-alias-label-primary)}.bhn1Oq_rail .bhn1Oq_search{background:0 0;border-color:#0000;gap:0;width:36px;height:36px;margin:0 0 12px;padding:0}.bhn1Oq_rail .bhn1Oq_searchButton{width:36px;height:36px;color:var(--dsw-alias-label-primary)}.bhn1Oq_rail .bhn1Oq_searchButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.bhn1Oq_listArea{min-height:0;margin-left:-4px;margin-right:calc(-1 * var(--dsh-session-list-edge-inset));flex-direction:column;flex:1;padding-left:4px;display:flex;overflow:visible}.bhn1Oq_rail .bhn1Oq_listArea{margin-left:0;margin-right:0;padding-left:0}.bhn1Oq_treeBody{flex-direction:column;flex:1;min-height:0;display:flex;position:relative}.bhn1Oq_fade{left:0;right:var(--dsh-session-list-edge-inset);background:linear-gradient(to bottom, transparent, var(--dsw-specific-sidebar-fill));pointer-events:none;height:24px;position:absolute;bottom:0}.bhn1Oq_wide{animation:bhn1Oq_wide-in .2s var(--ds-ease-in-out)}@keyframes bhn1Oq_wide-in{0%{opacity:0}}.bhn1Oq_list{min-height:0;margin-left:-4px;margin-right:var(--dsh-session-list-scrollbar-offset);padding-left:4px;padding-right:calc(var(--dsh-session-list-edge-inset) - var(--dsh-session-list-scrollbar-width) - var(--dsh-session-list-scrollbar-offset));scrollbar-gutter:stable;flex:1;padding-bottom:16px;overflow-y:auto}.bhn1Oq_flatList>*+*,.bhn1Oq_searchTree>[role=treeitem]+[role=treeitem],.bhn1Oq_groupSection>*+*{margin-top:2px}.bhn1Oq_searchStatus,.bhn1Oq_searchWarning{color:var(--dsw-alias-label-tertiary);padding:10px 12px;font-size:12px;line-height:18px}.bhn1Oq_searchWarning{color:var(--dsw-alias-label-secondary)}.bhn1Oq_groupSection{position:relative}.bhn1Oq_groupSection+.bhn1Oq_groupSection{margin-top:4px}.bhn1Oq_listTopDropIndicator,.bhn1Oq_workspaceDropBefore:before,.bhn1Oq_workspaceDropAfter:after{content:\"\";z-index:1;background:linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat, linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat, linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;pointer-events:none;height:12px;position:absolute;left:0;right:0}.bhn1Oq_listTopDropIndicator{top:-8px;left:0;right:var(--dsh-session-list-edge-inset)}.bhn1Oq_listTopDropActive>.bhn1Oq_workspaceDropBefore:first-child:before{display:none}.bhn1Oq_workspaceDropBefore:before{top:-8px}.bhn1Oq_workspaceDropAfter:after{bottom:-8px}.bhn1Oq_sessionOverflowButton{cursor:pointer;text-align:left;width:100%;height:28px;color:var(--dsw-alias-label-tertiary);background:0 0;border:none;border-radius:8px;padding:0 12px 0 28px;font-size:12px}.bhn1Oq_groupSection>.bhn1Oq_sessionOverflowButton{margin-top:0}.bhn1Oq_sessionOverflowButton:hover{color:var(--dsw-alias-label-secondary);background:0 0}.bhn1Oq_empty{color:var(--dsw-alias-label-tertiary);padding:16px 12px;font-size:13px}.bhn1Oq_renameInput{box-sizing:border-box;border:.5px solid var(--dsw-alias-border-l4);width:100%;height:44px;color:var(--dsw-alias-label-primary);background:0 0;border-radius:22px;outline:none;padding:7px 14px;font-size:14px;font-weight:400;line-height:22px}.bhn1Oq_renameInput:disabled{color:var(--dsw-alias-label-dimmed)}.bhn1Oq_renameError{color:var(--dsw-alias-state-error-primary);margin-top:8px;font-size:12px;line-height:18px}.bhn1Oq_deleteAction:not(:disabled){color:var(--dsw-alias-state-error-primary)}.bhn1Oq_deleteStatus{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}.bhn1Oq_archiveWarning{flex-direction:column;gap:2px;margin-top:8px;color:var(--dsw-alias-state-warn-primary,#c26a00);font-size:12px;line-height:18px;display:flex}.bhn1Oq_archiveWarningTitle{font-weight:600}.bhn1Oq_archiveCaution:not(:disabled){color:var(--dsw-alias-state-warn-primary,#c26a00)}@media (prefers-reduced-motion:reduce){.bhn1Oq_wide{animation:none}.bhn1Oq_search,.bhn1Oq_sectionLabel,.bhn1Oq_searchSlot,.bhn1Oq_searchInput,.bhn1Oq_headerActions{transition:none}}";
 		const tagId = "@deepseek-ai/dsh-client-ui-workspace/WorkspaceBrowser.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -2194,6 +2214,9 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var WorkspaceBrowser_module_css_default = {
+			"archiveCaution": "bhn1Oq_archiveCaution",
+			"archiveWarning": "bhn1Oq_archiveWarning",
+			"archiveWarningTitle": "bhn1Oq_archiveWarningTitle",
 			"clearButton": "bhn1Oq_clearButton",
 			"deleteAction": "bhn1Oq_deleteAction",
 			"deleteStatus": "bhn1Oq_deleteStatus",
@@ -2430,7 +2453,7 @@ window.__ModuleLoader__.load({
 			return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
 		}
 		/** The scrolling session tree; unmounting drops the sessions subscription and expand-all state. */
-		function SessionTree({ useSessions, useSessionPendingInteraction, startSession, open, forkSession, workspaces: allWorkspaces, archivedSessionIds, workspaceReady, usePanelInfo, onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive, insertWorkspaceBefore, insertSessionBefore, orderBy, groupExpansion, setGroupExpanded, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t, revealSessionId, onSessionRevealed }) {
+		function SessionTree({ useSessions, useSessionPendingInteraction, startSession, open, forkSession, stopSession, workspaces: allWorkspaces, archivedSessionIds, workspaceReady, usePanelInfo, onRenameRequest, onDeleteRequest, onClearUngroupedRequest, onSessionRename, onSessionArchive, insertWorkspaceBefore, insertSessionBefore, orderBy, groupExpansion, setGroupExpanded, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t, revealSessionId, onSessionRevealed }) {
 			const knowledgePage = useKnowledgePage();
 			const vaults = useKnowledgeVaults();
 			const workspaces = (0, react.useMemo)(() => filterWorkspacesForPage(allWorkspaces, vaults, knowledgePage), [
@@ -2596,6 +2619,17 @@ window.__ModuleLoader__.load({
 				});
 			}, [sessionOrderByAccount, workspaces]);
 			const orderedUngroupedSessionIds = (0, react.useMemo)(() => reconciledSessionOrder(ungroupedSessionIds, sessionOrderByAccount[""]), [sessionOrderByAccount, ungroupedSessionIds]);
+			// Exactly the rows the Ungrouped bucket shows, in list order: archived
+			// chats are already hidden and Pinned chats live in their own section.
+			const clearableUngroupedIds = (0, react.useMemo)(() => {
+				const archived = new Set(archivedSessionIds);
+				const pinned = new Set(pinnedIds);
+				return orderedUngroupedSessionIds.filter((id) => {
+					if (archived.has(id) || pinned.has(id)) return false;
+					const session = list.byId[id];
+					return session !== void 0 && sessionVisible(session, list.current, archived);
+				});
+			}, [archivedSessionIds, list, orderedUngroupedSessionIds, pinnedIds]);
 			const catalog = resolveVaultCatalog(vaults, allWorkspaces);
 			const page = effectiveKnowledgePage(knowledgePage);
 			const groups = (0, react.useMemo)(() => deriveGroups(list, orderedWorkspaces, archivedSessionIds, pendingInteractions, {
@@ -2767,7 +2801,11 @@ window.__ModuleLoader__.load({
 											}
 										},
 										drag: workspaceDragProps,
-										actions: group.cwd === void 0 || !page && group.workspaceId === void 0 ? void 0 : {
+										actions: group.pinned === true ? void 0 : group.cwd === void 0 ? clearableUngroupedIds.length === 0 ? void 0 : {
+											clear: () => {
+												onClearUngroupedRequest(clearableUngroupedIds);
+											}
+										} : !page && group.workspaceId === void 0 ? void 0 : {
 											...page ? {
 												settings: () => {
 													runVaultAction(group, "settings");
@@ -2870,7 +2908,7 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** The flat "In one list" body: every session is one draggable top-level row. */
-		function FlatList({ useSessions, useSessionPendingInteraction, open, forkSession, onSessionRename, onSessionArchive, archivedSessionIds, usePanelInfo, orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, revealSessionId, onSessionRevealed, t, workspaces }) {
+		function FlatList({ useSessions, useSessionPendingInteraction, open, forkSession, stopSession, onSessionRename, onSessionArchive, archivedSessionIds, usePanelInfo, orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, revealSessionId, onSessionRevealed, t, workspaces }) {
 			const knowledgePage = useKnowledgePage();
 			const vaults = useKnowledgeVaults();
 			const panelActive = usePanelInfo((info) => info.activePanelId !== null);
@@ -3082,7 +3120,7 @@ window.__ModuleLoader__.load({
 		* @param props - composed slot props (shell owner share + store + injected actions).
 		* @returns the region element tree.
 		*/
-		function WorkspaceBrowser({ wide, usePanelInfo, expandSidebar, useSessions, useSessionPendingInteraction, useWorkspaces, useStore, actions, startSession, open, renameSession, forkSession, renameWorkspace, deleteWorkspace, insertWorkspaceBefore, archiveSession, insertSessionBefore, createWorkspace, searchSessions, searchResultLimit, useDirectoryFlow, useHostInfo, renderSlot, t }) {
+		function WorkspaceBrowser({ wide, usePanelInfo, expandSidebar, useSessions, useSessionPendingInteraction, useWorkspaces, useStore, actions, startSession, open, renameSession, forkSession, renameWorkspace, deleteWorkspace, insertWorkspaceBefore, archiveSession, stopSession, insertSessionBefore, createWorkspace, searchSessions, searchResultLimit, useDirectoryFlow, useHostInfo, renderSlot, t }) {
 			const knowledgePage = useKnowledgePage();
 			const vaults = useKnowledgeVaults();
 			const currentSessionId = useSessions((state) => state.current);
@@ -3356,10 +3394,115 @@ window.__ModuleLoader__.load({
 				setSessionRenameDraft(currentTitle);
 				setSessionRenameError(null);
 			};
-			const onSessionArchive = (sessionId) => {
-				archiveSession(sessionId).catch((reason) => {
-					console.warn("session archive rejected:", reason);
+			/**
+			* Archive is the one row action that removes a chat from the list without
+			* asking, so it always goes through a confirmation dialog. The target
+			* carries the activity the row showed when the menu was used; the live
+			* list is consulted too, because a chat can fall out of the list (deleted
+			* elsewhere) while the dialog sits open.
+			*/
+			const [archiveTarget, setArchiveTarget] = (0, react.useState)(null);
+			const [archiving, setArchiving] = (0, react.useState)(false);
+			const [archiveError, setArchiveError] = (0, react.useState)(null);
+			const closeArchive = () => {
+				if (archiving) return;
+				setArchiveTarget(null);
+				setArchiveError(null);
+			};
+			const archiveLiveSession = archiveTarget === null ? void 0 : sessionById[archiveTarget.sessionId];
+			/** Running now, or already running when the archive was requested. */
+			const archiveInFlight = archiveLiveSession?.running === true || archiveTarget?.running === true;
+			const archiveSubagents = archiveLiveSession?.runningSubagentCount ?? archiveTarget?.runningSubagents ?? 0;
+			/**
+			* The dialog names the chat it is about to archive. The title is re-read from
+			* the live list (a rename while the dialog is open must win), and a chat whose
+			* title cannot be resolved is named generically rather than rendered as the
+			* string "undefined".
+			*/
+			const archiveTitle = (() => {
+				if (archiveTarget === null) return "";
+				const live = sessionTitle(archiveLiveSession ?? {});
+				if (live !== "") return live;
+				const captured = String(archiveTarget.title ?? "").trim();
+				return captured === "" || captured === "undefined" ? t("archive.thisSession") : captured;
+			})();
+			/**
+			* Archive the confirmed target. A running chat is stopped first: archiving
+			* only hides the row, so without the stop the operator would lose sight of a
+			* turn they asked to end. The stop is best-effort — an already-finished run
+			* reports nothing to cancel, and the archive still proceeds.
+			*/
+			const confirmArchive = async () => {
+				/* v8 ignore next -- the Modal is absent without a target and its button is disabled while archiving. */
+				if (archiving || archiveTarget === null) return;
+				const sessionId = archiveTarget.sessionId;
+				if (sessionId === void 0) {
+					setArchiveError(t("archive.noTarget"));
+					return;
+				}
+				const inFlight = archiveLiveSession?.running === true;
+				setArchiving(true);
+				setArchiveError(null);
+				try {
+					if (inFlight) await stopSession(sessionId).catch(() => {});
+					await archiveSession(sessionId);
+					setArchiving(false);
+					setArchiveTarget(null);
+				} catch (reason) {
+					setArchiving(false);
+					setArchiveError(reason instanceof Error ? reason.message : String(reason));
+				}
+			};
+			/**
+			* Open the archive confirmation for one session row.
+			*
+			* The argument is normally the derived row node. A string is accepted too
+			* because a client bundle reload can leave a previously-rendered row holding
+			* its old handler, and that handler passed the id alone; resolving both
+			* shapes keeps such a row working instead of failing the confirmation.
+			*/
+			const onSessionArchive = (input) => {
+				const node = typeof input === "string" ? void 0 : input;
+				const sessionId = typeof input === "string" ? input : node?.id;
+				const summary = sessionId === void 0 ? void 0 : sessionById[sessionId];
+				setArchiveTarget({
+					sessionId: typeof sessionId === "string" && sessionId !== "" ? sessionId : void 0,
+					title: node?.blank === true || node?.title === "" ? t("session.new") : node?.title ?? sessionTitle(summary ?? {}),
+					running: node?.running === true || summary?.running === true,
+					runningSubagents: node?.runningSubagentCount ?? 0
 				});
+				setArchiveError(null);
+			};
+			const [clearTarget, setClearTarget] = (0, react.useState)(null);
+			const [clearing, setClearing] = (0, react.useState)(false);
+			const [clearError, setClearError] = (0, react.useState)(null);
+			const closeClear = () => {
+				if (clearing) return;
+				setClearTarget(null);
+				setClearError(null);
+			};
+			/** How many of the chats about to be archived are still in flight. */
+			const clearRunningCount = clearTarget === null ? 0 : clearTarget.sessionIds.filter((id) => sessionById[id]?.running === true).length;
+			/** Archive every chat the Ungrouped bucket lists; the bucket then disappears. */
+			const confirmClearUngrouped = async () => {
+				/* v8 ignore next -- the Modal is absent without a target and its button is disabled while clearing. */
+				if (clearing || clearTarget === null) return;
+				setClearing(true);
+				setClearError(null);
+				const failed = [];
+				for (const sessionId of clearTarget.sessionIds) {
+					try {
+						await archiveSession(sessionId);
+					} catch (reason) {
+						failed.push(`${sessionId}: ${reason instanceof Error ? reason.message : String(reason)}`);
+					}
+				}
+				setClearing(false);
+				if (failed.length === 0) {
+					setClearTarget(null);
+					return;
+				}
+				setClearError(failed.join("\n"));
 			};
 			const [deleteTarget, setDeleteTarget] = (0, react.useState)(null);
 			const [deleting, setDeleting] = (0, react.useState)(false);
@@ -3558,6 +3701,7 @@ window.__ModuleLoader__.load({
 							workspaces,
 							open,
 							forkSession,
+							stopSession,
 							onSessionRename,
 							onSessionArchive,
 							archivedSessionIds,
@@ -3576,6 +3720,7 @@ window.__ModuleLoader__.load({
 							onSessionRename,
 							onSessionArchive,
 							forkSession,
+							stopSession,
 							workspaces,
 							workspaceReady: workspacePhase === "ready" && workspaceStreamState !== "loading",
 							groupExpansion,
@@ -3601,6 +3746,10 @@ window.__ModuleLoader__.load({
 								});
 								setRenameDraft(currentTitle);
 								setRenameError(null);
+							},
+							onClearUngroupedRequest: (sessionIds) => {
+								setClearTarget({ sessionIds });
+								setClearError(null);
 							},
 							onDeleteRequest: (workspaceId, title, vaultId) => {
 								setDeleteTarget({
@@ -3715,6 +3864,80 @@ window.__ModuleLoader__.load({
 						})]
 					}),
 					(0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.Modal, {
+						open: archiveTarget !== null,
+						onClose: closeArchive,
+						closeLabel: t("close"),
+						title: t("archive.confirm.title"),
+						...archiveTarget === null ? {} : { description: t("archive.confirm.desc", { name: archiveTitle }) },
+						footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+							variant: "outline",
+							disabled: archiving,
+							onClick: closeArchive,
+							children: t("cancel")
+						}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+							variant: "primary",
+							className: archiveInFlight ? WorkspaceBrowser_module_css_default.archiveCaution : void 0,
+							disabled: archiving,
+							onClick: confirmArchive,
+							children: t(archiveInFlight ? "archive.running.action" : "archive.confirm.action")
+						})] }),
+						children: [archiveInFlight && (0, react_jsx_runtime.jsxs)("div", {
+							className: WorkspaceBrowser_module_css_default.archiveWarning,
+							role: "alert",
+							children: [(0, react_jsx_runtime.jsx)("span", {
+								className: WorkspaceBrowser_module_css_default.archiveWarningTitle,
+								children: t("archive.running.title")
+							}), (0, react_jsx_runtime.jsx)("span", {
+								children: archiveSubagents === 0 ? t("archive.running.stop") : t("archive.running.stop.subagents", { n: archiveSubagents })
+							})]
+						}), archiving && (0, react_jsx_runtime.jsx)("div", {
+							className: WorkspaceBrowser_module_css_default.deleteStatus,
+							role: "status",
+							children: t(archiveInFlight ? "archive.stopping" : "archive.pending")
+						}), archiveError !== null && (0, react_jsx_runtime.jsx)("div", {
+							className: WorkspaceBrowser_module_css_default.renameError,
+							role: "alert",
+							children: archiveError
+						})]
+					}),
+					(0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.Modal, {
+						open: clearTarget !== null,
+						onClose: closeClear,
+						closeLabel: t("close"),
+						title: t("clear.ungrouped.title"),
+						...clearTarget === null ? {} : { description: t("clear.ungrouped.desc", { n: clearTarget.sessionIds.length }) },
+						footer: (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+							variant: "outline",
+							disabled: clearing,
+							onClick: closeClear,
+							children: t("cancel")
+						}), (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+							variant: "outline",
+							className: WorkspaceBrowser_module_css_default.deleteAction,
+							disabled: clearing,
+							onClick: confirmClearUngrouped,
+							children: t("clear.ungrouped")
+						})] }),
+						children: [clearRunningCount > 0 && (0, react_jsx_runtime.jsxs)("div", {
+							className: WorkspaceBrowser_module_css_default.archiveWarning,
+							role: "alert",
+							children: [(0, react_jsx_runtime.jsx)("span", {
+								className: WorkspaceBrowser_module_css_default.archiveWarningTitle,
+								children: t("clear.ungrouped.running.title")
+							}), (0, react_jsx_runtime.jsx)("span", {
+								children: t("clear.ungrouped.running.desc", { n: clearRunningCount })
+							})]
+						}), clearing && (0, react_jsx_runtime.jsx)("div", {
+							className: WorkspaceBrowser_module_css_default.deleteStatus,
+							role: "status",
+							children: t("clear.ungrouped.pending")
+						}), clearError !== null && (0, react_jsx_runtime.jsx)("div", {
+							className: WorkspaceBrowser_module_css_default.renameError,
+							role: "alert",
+							children: clearError
+						})]
+					}),
+					(0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.Modal, {
 						open: deleteTarget !== null,
 						onClose: closeDelete,
 						closeLabel: t("close"),
@@ -3755,6 +3978,12 @@ window.__ModuleLoader__.load({
 		/** Simplified Chinese dictionary (the key-set source of truth). */
 		const zh = {
 			"group.ungrouped": "未分组",
+			"clear.ungrouped": "清空未分组",
+			"clear.ungrouped.title": "清空未分组",
+			"clear.ungrouped.desc": "将归档“未分组”里的 {n} 个会话，这个分组随之为空并消失。会话记录与文件夹都保留。",
+			"clear.ungrouped.pending": "正在归档会话…",
+			"clear.ungrouped.running.title": "其中有的会话还在跑",
+			"clear.ungrouped.running.desc": "这一批里有 {n} 个会话还在运行：归档只是把它们从列表里收起来，运行不会停。",
 			"session.new": "新会话",
 			"section.workspaces": "工作区",
 			"section.sessions": "会话",
@@ -3803,9 +4032,21 @@ window.__ModuleLoader__.load({
 			"kb.delete.pending": "正在删除知识库…",
 			"menu.fork": "分叉会话",
 			"menu.archiveSession": "归档会话",
+			"archive.confirm.title": "归档会话",
+			"archive.confirm.desc": "将把「{name}」从列表里归档。会话记录、工作区与文件都保留，之后可以在归档里找回。",
+			"archive.confirm.action": "归档",
+			"archive.pending": "正在归档会话…",
+			"archive.running.title": "这个会话还在跑",
+			"archive.running.stop": "这个会话还在跑。确认后会先把它停下来，再归档 —— 运行中的回合会被中止。",
+			"archive.running.stop.subagents": "这个会话还在跑（还有 {n} 个子代理）。确认后会先把它停下来，再归档 —— 运行中的回合会被中止。",
+			"archive.running.action": "停止并归档",
+			"archive.stopping": "正在停止会话…",
+			"archive.thisSession": "该会话",
+			"archive.noTarget": "没拿到这个会话的标识，没法归档（现场：{shape}）。把这一行发给我就能定位。",
 			"sessions.count.one": "{n} 个会话",
 			"sessions.count.other": "{n} 个会话",
 			"actions.workspace.aria": "工作区“{name}”的操作",
+			"actions.ungrouped.aria": "“未分组”的操作",
 			"actions.session.aria": "会话“{name}”的操作",
 			"actions.newSession.aria": "在“{name}”中新建会话",
 			"status.running": "进行中",
@@ -3818,6 +4059,32 @@ window.__ModuleLoader__.load({
 			"status.completed": "已完成",
 			"schedule.active": "有活动定时任务",
 			"hover.created": "创建于 {time}",
+			"git.branch": "工作分支",
+			"git.branches": "本地分支",
+			"git.search": "搜索分支…",
+			"git.create": "创建分支",
+			"git.createNamed": "创建 {name}",
+			"git.createFrom": "从 {branch} 创建分支",
+			"git.namePlaceholder": "分支名称",
+			"git.none": "未找到分支",
+			"git.empty": "没有可用分支",
+			"git.invalidName": "请输入有效的 Git 分支名",
+			"git.needName": "请输入分支名",
+			"git.changes": "更改",
+			"git.noChanges": "没有更改",
+			"git.summarize": "概括这次改动…",
+			"git.needMessage": "请输入提交说明",
+			"git.commit": "提交",
+			"git.committing": "正在提交…",
+			"git.commitPush": "提交并推送",
+			"git.createCommit": "新建分支并提交",
+			"git.createCommitPush": "新建分支、提交并推送",
+			"git.options": "提交选项",
+			"git.push": "推送",
+			"git.pushing": "正在推送…",
+			"git.message": "提交说明",
+			"git.dirty": "有未提交改动",
+			"git.sync": "领先 {ahead} / 落后 {behind}",
 			"hover.copied": "已复制",
 			"date.ymd": "{y}年{m}月{d}日",
 			"time.now": "刚刚",
@@ -3831,6 +4098,12 @@ window.__ModuleLoader__.load({
 		/** English dictionary, checked complete against the zh key set. */
 		const en = {
 			"group.ungrouped": "Ungrouped",
+			"clear.ungrouped": "Clear Ungrouped",
+			"clear.ungrouped.title": "Clear Ungrouped",
+			"clear.ungrouped.desc": "This archives the {n} sessions under Ungrouped, so the group empties and disappears. Session logs and folders are kept.",
+			"clear.ungrouped.pending": "Archiving sessions…",
+			"clear.ungrouped.running.title": "Some of these are still running",
+			"clear.ungrouped.running.desc": "{n} of these sessions are still running: archiving only takes them out of the list, the runs keep going.",
 			"session.new": "New Session",
 			"section.workspaces": "Workspaces",
 			"section.sessions": "Sessions",
@@ -3879,9 +4152,21 @@ window.__ModuleLoader__.load({
 			"kb.delete.pending": "Deleting knowledge base…",
 			"menu.fork": "Fork session",
 			"menu.archiveSession": "Archive session",
+			"archive.confirm.title": "Archive session",
+			"archive.confirm.desc": "This archives “{name}”, so it leaves the list. The session log, its workspace and its files are kept, and it can be restored from the archive.",
+			"archive.confirm.action": "Archive",
+			"archive.pending": "Archiving session…",
+			"archive.running.title": "This session is still running",
+			"archive.running.stop": "This session is still running. Confirming stops it first, then archives it — the live turn is cancelled.",
+			"archive.running.stop.subagents": "This session is still running (with {n} subagents). Confirming stops it first, then archives it — the live turn is cancelled.",
+			"archive.running.action": "Stop and archive",
+			"archive.stopping": "Stopping the session…",
+			"archive.thisSession": "this session",
+			"archive.noTarget": "This session has no id, so it cannot be archived (saw: {shape}). Send this line back to diagnose it.",
 			"sessions.count.one": "{n} session",
 			"sessions.count.other": "{n} sessions",
 			"actions.workspace.aria": "Workspace actions for {name}",
+			"actions.ungrouped.aria": "Ungrouped actions",
 			"actions.session.aria": "Session actions for {name}",
 			"actions.newSession.aria": "New session in {name}",
 			"status.running": "Running",
@@ -3894,6 +4179,32 @@ window.__ModuleLoader__.load({
 			"status.completed": "Completed",
 			"schedule.active": "Has active scheduled task",
 			"hover.created": "Created {time}",
+			"git.branch": "Working branch",
+			"git.branches": "Local branches",
+			"git.search": "Search branches...",
+			"git.create": "Create Branch",
+			"git.createNamed": "Create {name}",
+			"git.createFrom": "Create a branch from {branch}",
+			"git.namePlaceholder": "Branch name",
+			"git.none": "No branches found",
+			"git.empty": "No branches available",
+			"git.invalidName": "Enter a valid Git branch name",
+			"git.needName": "Enter a branch name",
+			"git.changes": "Changes",
+			"git.noChanges": "No changes",
+			"git.summarize": "Summarize your changes...",
+			"git.needMessage": "Enter a commit message",
+			"git.commit": "Commit",
+			"git.committing": "Committing…",
+			"git.commitPush": "Commit & Push",
+			"git.createCommit": "Create Branch & Commit",
+			"git.createCommitPush": "Create Branch, Commit & Push",
+			"git.options": "Commit options",
+			"git.push": "Push",
+			"git.pushing": "Pushing…",
+			"git.message": "Commit message",
+			"git.dirty": "Uncommitted changes",
+			"git.sync": "Ahead {ahead} / behind {behind}",
 			"hover.copied": "Copied",
 			"date.ymd": "{y}-{m}-{d}",
 			"time.now": "now",
@@ -3907,6 +4218,550 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region lib/types/client/index.js
 		/** Dictionary namespace owned by this plugin. */
+		const ICON_BRANCH = "M4.5 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm0 3v3.2c0 1.2.8 1.8 2 2.2L9 12.5m0 0a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0zM4.5 3.5V2";
+		const ICON_SEARCH = "M6.8 11.6a4.8 4.8 0 1 1 0-9.6 4.8 4.8 0 0 1 0 9.6zM10.2 10.2 13.5 13.5";
+		const ICON_CHEVRON_DOWN = "M4 6.2 8 10.2 12 6.2";
+		const gitChipCss = [
+			`.dsh-git-chip{position:relative;display:inline-flex;align-items:center;flex:none}`,
+			`.dsh-git-chip button.dsh-git-chip-btn{display:inline-flex;align-items:center;gap:6px;max-width:280px;height:28px;padding:0 10px;border:none;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary,#666);font:13px/1 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;cursor:pointer}`,
+			`.dsh-git-chip button.dsh-git-chip-btn:hover,.dsh-git-chip button.dsh-git-chip-btn[data-open="1"]{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1));color:var(--dsw-alias-label-primary,#111)}`,
+			`.dsh-git-chip-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}`,
+			`.dsh-git-chip-dot{width:6px;height:6px;border-radius:50%;background:#d97706;flex:none}`,
+			`.dsh-git-chip-menu{position:absolute;left:0;bottom:calc(100% + 6px);z-index:2147483001;width:280px;max-height:360px;display:flex;flex-direction:column;padding:4px 0 6px;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.08));border-radius:12px;background:var(--dsw-alias-bg-layer-1,#fff);box-shadow:0 16px 40px rgba(0,0,0,.16);font:13px/1.35 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:var(--dsw-alias-label-primary,#111);overflow:hidden}`,
+			`.dsh-git-chip-search{display:flex;align-items:center;gap:8px;padding:8px 14px 6px;flex:none}`,
+			`.dsh-git-chip-search svg{color:var(--dsw-alias-label-tertiary,#b0b0b0);flex:none}`,
+			`.dsh-git-chip-search input{flex:1;min-width:0;border:none;outline:none;background:transparent;color:inherit;font:inherit;padding:0}`,
+			`.dsh-git-chip-search input::placeholder{color:var(--dsw-alias-label-tertiary,#b0b0b0)}`,
+			`.dsh-git-chip-scroll{flex:1 1 auto;min-height:0;overflow:auto}`,
+			`.dsh-git-chip-row{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;padding:8px 14px;border:none;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}`,
+			`.dsh-git-chip-row:hover,.dsh-git-chip-row[data-active="1"]{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1))}`,
+			`.dsh-git-chip-row:disabled{cursor:default;opacity:1}`,
+			`.dsh-git-chip-row .dsh-git-chip-name{flex:1}`,
+			`.dsh-git-chip-check{flex:none;width:16px;text-align:right;color:var(--dsw-alias-label-primary,#111)}`,
+			`.dsh-git-chip-divider{height:1px;margin:4px 0 2px;background:var(--dsw-alias-border-l2,rgba(0,0,0,.08));flex:none}`,
+			`.dsh-git-chip-create svg{flex:none;color:var(--dsw-alias-label-secondary,#666)}`,
+			`.dsh-git-chip-status{padding:8px 14px;color:var(--dsw-alias-label-tertiary,#888);font-size:12px}`,
+			`.dsh-git-chip-error{padding:4px 14px 6px;color:#b45309;font-size:12px}`,
+			`.dsh-git-chip-prompt{padding:8px 14px 6px;color:var(--dsw-alias-label-tertiary,#888);font-size:12px;line-height:1.4}`,
+			`.dsh-git-chip-draft{margin:0 12px 8px;padding:7px 10px;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.08));border-radius:8px;background:transparent;color:inherit;font:inherit;outline:none;width:calc(100% - 24px);box-sizing:border-box}`,
+			`.dsh-git-bar{position:relative;display:inline-flex;align-items:center;gap:8px;flex:none}`,
+			`.dsh-git-pill{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 12px;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.08));border-radius:999px;background:var(--dsw-alias-bg-layer-1,#fff);color:var(--dsw-alias-label-primary,#111);font:13px/1 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.04)}`,
+			`.dsh-git-pill:hover,.dsh-git-pill[data-open="1"]{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.08))}`,
+			`.dsh-git-pill:disabled{opacity:.55;cursor:default}`,
+			`.dsh-git-plus{color:#16a34a;font-variant-numeric:tabular-nums}`,
+			`.dsh-git-minus{color:#dc2626;font-variant-numeric:tabular-nums}`,
+			`.dsh-git-split{display:inline-flex;align-items:stretch}`,
+			`.dsh-git-split .dsh-git-pill-main{border-radius:999px 0 0 999px}`,
+			`.dsh-git-split .dsh-git-chev{border-radius:0 999px 999px 0;border-left:none;padding:0 8px}`,
+			`.dsh-git-file{display:flex;align-items:center;gap:8px;width:100%;padding:6px 14px;border:none;background:transparent;color:inherit;font:12px/1.35 inherit;text-align:left}`,
+			`.dsh-git-file-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}`,
+			`.dsh-git-file-stat{flex:none;display:inline-flex;gap:6px;font-variant-numeric:tabular-nums}`,
+			`.dsh-git-changes-menu{width:320px}`
+		].join("");
+		if (typeof document !== "undefined") {
+			let tag = document.querySelector("style[data-plugin-css=\"dsh-git-chip\"]");
+			if (tag === null) {
+				tag = document.createElement("style");
+				tag.dataset.pluginCss = "dsh-git-chip";
+				document.head.appendChild(tag);
+			}
+			tag.textContent = gitChipCss;
+		}
+		function gitJson(url, options) {
+			return fetch(url, options).then((response) => response.json().then((body) => {
+				if (!response.ok || body?.ok === false) throw new Error(body?.message || `HTTP ${response.status}`);
+				return body;
+			}));
+		}
+		/** Cursor glass `f8_` / `git-ref.ts`. */
+		function isValidGitBranchName(name) {
+			const text = String(name ?? "");
+			if (text.length === 0) return false;
+			for (const ch of text) {
+				const code = ch.charCodeAt(0);
+				if (code < 32 || code === 127) return false;
+			}
+			if (text.trim() !== text || text.startsWith("-") || text.startsWith(".") || text.startsWith("/")) return false;
+			if (text === "HEAD" || text === "@") return false;
+			if (text.split("/").some((part) => part.startsWith(".") || part.endsWith(".lock") || part.endsWith("."))) return false;
+			return !/[\s~^:?*\\]|\[|\.\.|@\{|\/\/|\/$|\.lock$|\.$/.test(text);
+		}
+		function sortGitBranches(rows, current) {
+			return [...rows].sort((left, right) => {
+				const leftCurrent = left.current || left.name === current;
+				const rightCurrent = right.current || right.name === current;
+				if (leftCurrent !== rightCurrent) return leftCurrent ? -1 : 1;
+				if (!!left.remote !== !!right.remote) return left.remote ? 1 : -1;
+				return left.name.localeCompare(right.name);
+			});
+		}
+		function GitBranchChip({ cwd, t }) {
+			const [status, setStatus] = (0, react.useState)(null);
+			const [open, setOpen] = (0, react.useState)(false);
+			const [query, setQuery] = (0, react.useState)("");
+			const [mode, setMode] = (0, react.useState)("list");
+			const [draft, setDraft] = (0, react.useState)("");
+			const [busy, setBusy] = (0, react.useState)("");
+			const [error, setError] = (0, react.useState)("");
+			const [active, setActive] = (0, react.useState)(0);
+			const [panel, setPanel] = (0, react.useState)("");
+			const [message, setMessage] = (0, react.useState)("");
+			const [pendingAction, setPendingAction] = (0, react.useState)("");
+			const rootRef = (0, react.useRef)(null);
+			const searchRef = (0, react.useRef)(null);
+			const draftRef = (0, react.useRef)(null);
+			const messageRef = (0, react.useRef)(null);
+			(0, react.useEffect)(() => {
+				if (typeof cwd !== "string" || cwd.length === 0) {
+					setStatus(null);
+					return;
+				}
+				let cancelled = false;
+				const load = () => {
+					gitJson("/sidebar-editor/git-status", {
+						method: "POST",
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({ path: cwd })
+					}).then((body) => {
+						if (!cancelled) setStatus(body.git === true ? body : null);
+					}).catch(() => {
+						if (!cancelled) setStatus(null);
+					});
+				};
+				load();
+				const timer = setInterval(load, 5000);
+				return () => {
+					cancelled = true;
+					clearInterval(timer);
+				};
+			}, [cwd]);
+			(0, react.useEffect)(() => {
+				if (!open && !panel) return;
+				const onPointer = (event) => {
+					if (rootRef.current?.contains(event.target)) return;
+					setOpen(false);
+					setPanel("");
+				};
+				const onKey = (event) => {
+					if (event.key !== "Escape") return;
+					if (mode === "create") {
+						setMode("list");
+						setError("");
+						event.preventDefault();
+						return;
+					}
+					setOpen(false);
+					setPanel("");
+				};
+				document.addEventListener("pointerdown", onPointer, true);
+				document.addEventListener("keydown", onKey, true);
+				return () => {
+					document.removeEventListener("pointerdown", onPointer, true);
+					document.removeEventListener("keydown", onKey, true);
+				};
+			}, [open, panel, mode]);
+			(0, react.useEffect)(() => {
+				if (!open) return;
+				setQuery("");
+				setMode("list");
+				setDraft("");
+				setError("");
+				setActive(0);
+				const id = requestAnimationFrame(() => searchRef.current?.focus());
+				return () => cancelAnimationFrame(id);
+			}, [open]);
+			(0, react.useEffect)(() => {
+				if (open && mode === "create") draftRef.current?.focus();
+			}, [open, mode]);
+			if (status === null) return null;
+			const branches = sortGitBranches(status.branches ?? [], status.branch);
+			const needle = query.trim().toLowerCase();
+			const visible = needle ? branches.filter((row) => row.name.toLowerCase().includes(needle)) : branches;
+			const exactMatch = needle.length > 0 && branches.some((row) => row.name.toLowerCase() === needle);
+			const createFromQuery = needle.length > 0 && !exactMatch && isValidGitBranchName(query.trim());
+			const createLabel = createFromQuery ? t("git.createNamed", { name: query.trim() }) : t("git.create");
+			const applyStatus = (body) => {
+				if (body.status) setStatus(body.status);
+				else if (body.git === true) setStatus(body);
+			};
+			const run = (kind, request) => {
+				setBusy(kind);
+				setError("");
+				return request.then((body) => {
+					applyStatus(body);
+					setOpen(false);
+					setPanel("");
+					if (kind === "commit" || kind === "commit-push" || kind === "push") setMessage("");
+					return body;
+				}).catch((reason) => {
+					setError(reason instanceof Error ? reason.message : String(reason));
+				}).finally(() => {
+					setBusy("");
+				});
+			};
+			const checkout = (name) => {
+				if (!name || name === status.branch) {
+					setOpen(false);
+					return;
+				}
+				run("checkout", gitJson("/sidebar-editor/git-checkout", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ path: cwd, branch: name })
+				}));
+			};
+			const create = (name) => {
+				const value = String(name ?? "").trim();
+				if (!value) {
+					setError(t("git.needName"));
+					return;
+				}
+				if (!isValidGitBranchName(value)) {
+					setError(t("git.invalidName"));
+					return;
+				}
+				run("create", gitJson("/sidebar-editor/git-create-branch", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ path: cwd, name: value })
+				})).then((body) => {
+					if (body) finishPending(body);
+				});
+			};
+			const startCreate = () => {
+				if (createFromQuery) {
+					create(query.trim());
+					return;
+				}
+				setMode("create");
+				setDraft("");
+				setError("");
+			};
+			const openPanel = (next) => {
+				setOpen(false);
+				setPanel((current) => current === next ? "" : next);
+				setError("");
+			};
+			const needsMessage = () => {
+				if (message.trim()) return false;
+				setPanel("changes");
+				setError(t("git.needMessage"));
+				requestAnimationFrame(() => messageRef.current?.focus());
+				return true;
+			};
+			const commitRequest = (path, text) => gitJson("/sidebar-editor/git-commit", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ path, message: text })
+			});
+			const pushRequest = () => gitJson("/sidebar-editor/git-push", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ path: cwd })
+			});
+			const commitPushRequest = (path, text) => gitJson("/sidebar-editor/git-commit-push", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ path, message: text })
+			});
+			const runGitAction = (kind) => {
+				if (kind === "push") {
+					run("push", pushRequest());
+					return;
+				}
+				if (status.dirty && needsMessage()) {
+					setPendingAction(kind);
+					return;
+				}
+				if (kind === "createBranch" || kind === "createBranchAndCommit" || kind === "createBranchCommitAndPush") {
+					setPendingAction(kind);
+					setOpen(true);
+					setPanel("");
+					setMode("create");
+					setDraft("");
+					return;
+				}
+				const text = message.trim();
+				if (kind === "commit") run("commit", commitRequest(cwd, text));
+				else run("commit-push", commitPushRequest(cwd, text));
+			};
+			const finishPending = (body) => {
+				const next = pendingAction;
+				setPendingAction("");
+				if (next === "createBranch") return body;
+				if (!next) return body;
+				if (needsMessage()) return body;
+				const text = message.trim();
+				if (next === "createBranchAndCommit") return run("commit", commitRequest(cwd, text));
+				if (next === "createBranchCommitAndPush") return run("commit-push", commitPushRequest(cwd, text));
+				return body;
+			};
+			const primaryAction = status.dirty ? "commitAndPush" : status.ahead > 0 ? "push" : "commitAndPush";
+			const primaryLabel = busy === "push" ? t("git.pushing")
+				: busy === "commit" || busy === "commit-push" ? t("git.committing")
+				: primaryAction === "push" ? t("git.push")
+				: t("git.commitPush");
+			const files = status.files ?? [];
+			const additions = status.additions ?? 0;
+			const deletions = status.deletions ?? 0;
+			const showChanges = status.dirty || additions > 0 || deletions > 0;
+			const showCommit = status.dirty || (status.ahead ?? 0) > 0;
+			const actionRows = [];
+			if (status.dirty) {
+				actionRows.push({ id: "commitAndPush", label: t("git.commitPush") });
+				actionRows.push({ id: "commit", label: t("git.commit") });
+			}
+			if ((status.ahead ?? 0) > 0) actionRows.push({ id: "push", label: t("git.push") });
+			if (status.dirty && status.isOnDefaultBranch) {
+				actionRows.push({ id: "createBranchAndCommit", label: t("git.createCommit") });
+				actionRows.push({ id: "createBranchCommitAndPush", label: t("git.createCommitPush") });
+				actionRows.push({ id: "createBranch", label: t("git.create") });
+			}
+			const onSearchKey = (event) => {
+				if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+					event.preventDefault();
+					const count = visible.length + 1;
+					setActive((value) => (event.key === "ArrowDown" ? value + 1 : value + count - 1) % count);
+					return;
+				}
+				if (event.key !== "Enter" || busy) return;
+				event.preventDefault();
+				if (active < visible.length) checkout(visible[active]?.name);
+				else startCreate();
+			};
+			const emptyText = needle ? t("git.none") : t("git.empty");
+			const menu = mode === "create"
+				? (0, react_jsx_runtime.jsxs)("div", {
+					className: "dsh-git-chip-menu",
+					role: "dialog",
+					"aria-label": t("git.create"),
+					children: [
+						(0, react_jsx_runtime.jsx)("div", {
+							className: "dsh-git-chip-prompt",
+							children: t("git.createFrom", { branch: status.branch })
+						}),
+						(0, react_jsx_runtime.jsx)("input", {
+							ref: draftRef,
+							className: "dsh-git-chip-draft",
+							value: draft,
+							placeholder: t("git.namePlaceholder"),
+							disabled: Boolean(busy),
+							onChange: (event) => setDraft(event.target.value),
+							onKeyDown: (event) => {
+								if (event.key === "Enter") {
+									event.preventDefault();
+									create(draft);
+								}
+							}
+						}),
+						(0, react_jsx_runtime.jsx)("div", { className: "dsh-git-chip-divider" }),
+						(0, react_jsx_runtime.jsxs)("button", {
+							type: "button",
+							className: "dsh-git-chip-row dsh-git-chip-create",
+							disabled: Boolean(busy),
+							onClick: () => create(draft),
+							children: [
+								(0, react_jsx_runtime.jsx)(CursorGlyph, { path: ICON_PLUS, size: 14 }),
+								(0, react_jsx_runtime.jsx)("span", {
+									className: "dsh-git-chip-name",
+									children: draft.trim() && isValidGitBranchName(draft.trim())
+										? t("git.createNamed", { name: draft.trim() })
+										: t("git.create")
+								})
+							]
+						}),
+						error ? (0, react_jsx_runtime.jsx)("div", { className: "dsh-git-chip-error", children: error }) : null
+					]
+				})
+				: (0, react_jsx_runtime.jsxs)("div", {
+					className: "dsh-git-chip-menu",
+					role: "listbox",
+					"aria-label": t("git.branch"),
+					children: [
+						(0, react_jsx_runtime.jsxs)("div", {
+							className: "dsh-git-chip-search",
+							children: [
+								(0, react_jsx_runtime.jsx)(CursorGlyph, { path: ICON_SEARCH, size: 14 }),
+								(0, react_jsx_runtime.jsx)("input", {
+									ref: searchRef,
+									value: query,
+									placeholder: t("git.search"),
+									disabled: Boolean(busy),
+									"aria-label": t("git.search"),
+									onChange: (event) => {
+										setQuery(event.target.value);
+										setActive(0);
+										setError("");
+									},
+									onKeyDown: onSearchKey
+								})
+							]
+						}),
+						visible.length === 0
+							? (0, react_jsx_runtime.jsx)("div", { className: "dsh-git-chip-status", children: emptyText })
+							: (0, react_jsx_runtime.jsx)("div", {
+								className: "dsh-git-chip-scroll",
+								children: visible.map((row, index) => (0, react_jsx_runtime.jsxs)("button", {
+									type: "button",
+									className: "dsh-git-chip-row",
+									role: "option",
+									"aria-selected": row.name === status.branch,
+									"data-current": row.name === status.branch ? "1" : undefined,
+									"data-active": active === index ? "1" : undefined,
+									disabled: Boolean(busy),
+									onMouseEnter: () => setActive(index),
+									onClick: () => checkout(row.name),
+									children: [
+										(0, react_jsx_runtime.jsx)("span", { className: "dsh-git-chip-name", children: row.name }),
+										row.name === status.branch ? (0, react_jsx_runtime.jsx)("span", { className: "dsh-git-chip-check", children: "✓" }) : null
+									]
+								}, row.name))
+							}),
+						(0, react_jsx_runtime.jsx)("div", { className: "dsh-git-chip-divider" }),
+						(0, react_jsx_runtime.jsxs)("button", {
+							type: "button",
+							className: "dsh-git-chip-row dsh-git-chip-create",
+							"data-active": active === visible.length ? "1" : undefined,
+							disabled: Boolean(busy),
+							onMouseEnter: () => setActive(visible.length),
+							onClick: startCreate,
+							children: [
+								(0, react_jsx_runtime.jsx)(CursorGlyph, { path: ICON_PLUS, size: 14 }),
+								(0, react_jsx_runtime.jsx)("span", { className: "dsh-git-chip-name", children: createLabel })
+							]
+						}),
+						error ? (0, react_jsx_runtime.jsx)("div", { className: "dsh-git-chip-error", children: error }) : null
+					]
+				});
+			const changesMenu = panel === "changes" ? (0, react_jsx_runtime.jsxs)("div", {
+				className: "dsh-git-chip-menu dsh-git-changes-menu",
+				role: "dialog",
+				"aria-label": t("git.changes"),
+				children: [
+					(0, react_jsx_runtime.jsx)("div", { className: "dsh-git-chip-prompt", children: t("git.changes") }),
+					files.length === 0
+						? (0, react_jsx_runtime.jsx)("div", { className: "dsh-git-chip-status", children: t("git.noChanges") })
+						: (0, react_jsx_runtime.jsx)("div", {
+							className: "dsh-git-chip-scroll",
+							children: files.map((file) => (0, react_jsx_runtime.jsxs)("div", {
+								className: "dsh-git-file",
+								children: [
+									(0, react_jsx_runtime.jsx)("span", { className: "dsh-git-file-name", title: file.path, children: file.path }),
+									(0, react_jsx_runtime.jsxs)("span", {
+										className: "dsh-git-file-stat",
+										children: [
+											file.additions > 0 ? (0, react_jsx_runtime.jsxs)("span", { className: "dsh-git-plus", children: ["+", file.additions] }) : null,
+											file.deletions > 0 ? (0, react_jsx_runtime.jsxs)("span", { className: "dsh-git-minus", children: ["-", file.deletions] }) : null
+										]
+									})
+								]
+							}, file.path))
+						}),
+					(0, react_jsx_runtime.jsx)("div", { className: "dsh-git-chip-divider" }),
+					(0, react_jsx_runtime.jsx)("textarea", {
+						ref: messageRef,
+						className: "dsh-git-chip-draft",
+						value: message,
+						placeholder: t("git.summarize"),
+						disabled: Boolean(busy),
+						rows: 3,
+						onChange: (event) => setMessage(event.target.value)
+					}),
+					error && panel === "changes" ? (0, react_jsx_runtime.jsx)("div", { className: "dsh-git-chip-error", children: error }) : null
+				]
+			}) : null;
+			const commitMenu = panel === "commit" ? (0, react_jsx_runtime.jsxs)("div", {
+				className: "dsh-git-chip-menu",
+				role: "menu",
+				"aria-label": t("git.options"),
+				children: [
+					actionRows.map((row) => (0, react_jsx_runtime.jsx)("button", {
+						type: "button",
+						className: "dsh-git-chip-row",
+						role: "menuitem",
+						disabled: Boolean(busy),
+						onClick: () => runGitAction(row.id),
+						children: (0, react_jsx_runtime.jsx)("span", { className: "dsh-git-chip-name", children: row.label })
+					}, row.id)),
+					error && panel === "commit" ? (0, react_jsx_runtime.jsx)("div", { className: "dsh-git-chip-error", children: error }) : null
+				]
+			}) : null;
+			return (0, react_jsx_runtime.jsxs)("div", {
+				ref: rootRef,
+				className: "dsh-git-bar",
+				children: [
+					(0, react_jsx_runtime.jsxs)("div", {
+						className: "dsh-git-chip",
+						children: [
+							(0, react_jsx_runtime.jsxs)("button", {
+								type: "button",
+								className: "dsh-git-chip-btn",
+								"data-open": open ? "1" : undefined,
+								"aria-label": t("git.branch"),
+								"aria-expanded": open,
+								onClick: () => {
+									setPanel("");
+									setOpen((value) => !value);
+								},
+								children: [
+									(0, react_jsx_runtime.jsx)(CursorGlyph, { path: ICON_BRANCH, size: 14 }),
+									(0, react_jsx_runtime.jsx)("span", { className: "dsh-git-chip-name", children: status.branch }),
+									status.dirty ? (0, react_jsx_runtime.jsx)("span", { className: "dsh-git-chip-dot", title: t("git.dirty") }) : null
+								]
+							}),
+							open ? menu : null
+						]
+					}),
+					showChanges ? (0, react_jsx_runtime.jsxs)("div", {
+						className: "dsh-git-chip",
+						children: [
+							(0, react_jsx_runtime.jsxs)("button", {
+								type: "button",
+								className: "dsh-git-pill",
+								"data-open": panel === "changes" ? "1" : undefined,
+								"aria-label": t("git.changes"),
+								"aria-expanded": panel === "changes",
+								onClick: () => openPanel("changes"),
+								children: [
+									(0, react_jsx_runtime.jsx)("span", { children: t("git.changes") }),
+									additions > 0 ? (0, react_jsx_runtime.jsxs)("span", { className: "dsh-git-plus", children: ["+", additions] }) : null,
+									deletions > 0 ? (0, react_jsx_runtime.jsxs)("span", { className: "dsh-git-minus", children: ["-", deletions] }) : null
+								]
+							}),
+							changesMenu
+						]
+					}) : null,
+					showCommit ? (0, react_jsx_runtime.jsxs)("div", {
+						className: "dsh-git-chip",
+						children: [
+							(0, react_jsx_runtime.jsxs)("div", {
+								className: "dsh-git-split",
+								children: [
+									(0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: "dsh-git-pill dsh-git-pill-main",
+										disabled: Boolean(busy),
+										onClick: () => runGitAction(primaryAction),
+										children: primaryLabel
+									}),
+									(0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: "dsh-git-pill dsh-git-chev",
+										"data-open": panel === "commit" ? "1" : undefined,
+										"aria-label": t("git.options"),
+										"aria-expanded": panel === "commit",
+										disabled: Boolean(busy),
+										onClick: () => openPanel("commit"),
+										children: (0, react_jsx_runtime.jsx)(CursorGlyph, { path: ICON_CHEVRON_DOWN, size: 12 })
+									})
+								]
+							}),
+							commitMenu
+						]
+					}) : null
+				]
+			});
+		}
 		const NS = "workspace";
 		/**
 		* Required services (cordis fiber inject). The target slots are declared by
@@ -3980,6 +4835,21 @@ window.__ModuleLoader__.load({
 					if (session === void 0) throw new Error(`unknown session "${sessionId}"`);
 					const result = await session.rename(title);
 					if (!result.ok) throw new Error(result.error.message);
+				},
+				/**
+				* Stop a live turn, so archiving a running chat stops the run instead of
+				* hiding it. Resolves once the list projection reports the session idle
+				* again, which keeps a stop-then-archive from racing the run.
+				*/
+				stopSession: async (sessionId) => {
+					const session = sessions.binding(sessionId)?.session;
+					if (session === void 0) throw new Error(`unknown session "${sessionId}"`);
+					const result = await session.cancel();
+					if (!result.ok) throw new Error(result.error.message);
+					const deadline = Date.now() + 2000;
+					while (sessions.list.getSnapshot().byId[sessionId]?.running === true && Date.now() < deadline) {
+						await new Promise((resolve) => setTimeout(resolve, 100));
+					}
 				},
 				forkSession: (sessionId) => {
 					uiWorkspace.forkSession(sessionId).catch(() => {});
@@ -4086,6 +4956,10 @@ window.__ModuleLoader__.load({
 				inject: pickerInjected,
 				locale: NS
 			}, WorkspacePicker));
+			ctx.slots.inject("conversation.hero.branch", () => ctx.slots.register({
+				name: "conversation.hero.branch",
+				locale: NS
+			}, GitBranchChip));
 		}
 		//#endregion
 		exports.apply = apply;

@@ -183,6 +183,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
             scope: 'root';
             owner: HeroAgentPresetOwnerProps;
         };
+        /** Local git branch chip above the composer. Hidden when the folder is not a repo. */
+        'conversation.hero.branch': {
+            kind: 'single';
+            scope: 'root';
+            owner: HeroBranchOwnerProps;
+        };
         /** Full-width entries above the workspace/mode row and composer card. */
         'conversation.input.preamble': {
             kind: 'list';
@@ -397,7 +403,7 @@ export interface HeroBrandMarkOwnerProps {
     className?: string | undefined;
 }
 /** Full props of the resident optional-Session Conversation shell. */
-export type ConversationSlotProps = PropsRuntime<'main.conversation'> & PropsRenderSlots<'conversation.session' | 'conversation.session.header' | 'conversation.composer' | 'conversation.composer.bar' | 'conversation.input.preamble' | 'conversation.input.dock' | 'conversation.hero.brand.mark' | 'conversation.hero.workspace' | 'conversation.hero.agentPreset'> & InjectFace<ConversationInjected> & PropsLocale<'conversation'>;
+export type ConversationSlotProps = PropsRuntime<'main.conversation'> & PropsRenderSlots<'conversation.session' | 'conversation.session.header' | 'conversation.composer' | 'conversation.composer.bar' | 'conversation.input.preamble' | 'conversation.input.dock' | 'conversation.hero.brand.mark' | 'conversation.hero.workspace' | 'conversation.hero.agentPreset' | 'conversation.hero.branch'> & InjectFace<ConversationInjected> & PropsLocale<'conversation'>;
 /** Shared target-neutral Conversation store handle. */
 export type ConversationStore = ReturnType<typeof createConversationStore>;
 /** Full props of the strict Session body. */
@@ -406,6 +412,12 @@ export type ConversationSessionSlotProps = PropsRuntime<'conversation.session'> 
 export type ConversationSessionHeaderSlotProps = PropsRuntime<'conversation.session.header'> & PropsRenderSlots<'conversation.session.header.lineage' | 'conversation.session.header.actions' | 'conversation.session.header.utilities' | 'conversation.session.header.corner'> & PropsStore<ConversationStore> & InjectFace<ConversationSessionHeaderInjected> & PropsLocale<'conversation'>;
 /** Full props of the draft-attachment renderer. */
 export type ComposerAttachmentsProps = PropsRuntime<'conversation.input.attachments'> & PropsLocale<'conversation'>;
+/** Owner share common to blank-session Workspace pickers. */
+/** Owner share of the composer git-branch chip. Absent cwd hides the chip. */
+export interface HeroBranchOwnerProps {
+    /** Absolute workspace path; the chip renders only when this is a local git repo. */
+    cwd?: string | undefined;
+}
 /** Owner share common to blank-session Workspace pickers. */
 export interface EmptyWorkspaceOwnerProps {
     open: boolean;
