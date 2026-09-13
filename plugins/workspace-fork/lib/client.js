@@ -882,7 +882,7 @@ window.__ModuleLoader__.load({
 		function deriveGroups(list, workspaces, archivedSessionIds, pendingInteractions, view, pinnedIds, vaults) {
 			const archived = new Set(archivedSessionIds);
 			const groupExpansion = view.groupExpansion && typeof view.groupExpansion === "object" ? view.groupExpansion : {};
-			const groupIsExpanded = (key) => Object.prototype.hasOwnProperty.call(groupExpansion, key) ? groupExpansion[key] === true : true;
+			const groupIsExpanded = (key) => groupExpansion[key] === true;
 			const descendants = indexSubagentDescendants(list.byId);
 			const currentGroup = list.current === void 0 ? void 0 : owningGroupKey(workspaces, list.current);
 			const groups = [];
