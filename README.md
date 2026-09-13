@@ -55,7 +55,7 @@ The App knowledge chat resolves a document first (title / alias / description),
 then reads that file. Asking `Gptimage skill 原理` used to miss
 `gptimage2/SKILL.md`; it now opens that body.
 
-Before / after and how to reproduce:
+Before / after, retrieve timing, and conversation token use:
 
 https://github.com/alex-zz7/deepseek-harness/blob/main/docs/knowledge-retrieve.md
 

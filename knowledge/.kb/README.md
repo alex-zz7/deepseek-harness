@@ -6,7 +6,7 @@
 
 **全本地、零 API 密钥、零联网**（模型首次下载后）。
 
-同一句 `Gptimage skill 原理？` 的前后对比（平铺检索搜空 → 先认文档后打开 `gptimage2/SKILL.md`）：
+同一句 `Gptimage skill 原理？` 的前后对比（平铺检索搜空 → 先认文档后打开 `gptimage2/SKILL.md`；含检索耗时和对话用量）：
 
 https://github.com/alex-zz7/deepseek-harness/blob/main/docs/knowledge-retrieve.md
 
