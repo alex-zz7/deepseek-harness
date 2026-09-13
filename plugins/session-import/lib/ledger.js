@@ -39,17 +39,64 @@ export async function readLedger(path = ledgerPath()) {
   try {
     raw = await readFile(path, 'utf8');
   } catch {
-    return { version: LEDGER_VERSION, entries: {} };
+    return emptyLedger();
   }
   try {
     const parsed = JSON.parse(raw);
     if (parsed === null || typeof parsed !== 'object' || typeof parsed.entries !== 'object' || parsed.entries === null) {
-      return { version: LEDGER_VERSION, entries: {} };
+      return emptyLedger();
     }
-    return { version: LEDGER_VERSION, entries: parsed.entries };
+    return {
+      version: LEDGER_VERSION,
+      entries: parsed.entries,
+      dismissedCwds: normalizeDismissed(parsed.dismissedCwds),
+    };
   } catch {
-    return { version: LEDGER_VERSION, entries: {} };
+    return emptyLedger();
   }
+}
+
+/** Empty ledger used when the file is missing or unreadable. */
+function emptyLedger() {
+  return { version: LEDGER_VERSION, entries: {}, dismissedCwds: [] };
+}
+
+/** Collapse a workspace path so later lookups match the same directory. */
+export function normalizeCwd(cwd) {
+  return String(cwd ?? '')
+    .replace(/\/+$/, '')
+    .trim();
+}
+
+/** Unique, non-empty workspace paths the user has removed from the sidebar. */
+function normalizeDismissed(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map(normalizeCwd).filter((cwd) => cwd.length > 0))];
+}
+
+/** True when this directory was deleted from the sidebar on purpose. */
+export function isDismissed(ledger, cwd) {
+  const path = normalizeCwd(cwd);
+  return path.length > 0 && (ledger.dismissedCwds ?? []).includes(path);
+}
+
+/**
+ * Remember that the user removed this workspace from the sidebar.
+ *
+ * Import and startup reconcile must not `create` it again. The session logs
+ * stay on disk; they just stop being grouped under a folder the person
+ * already threw away.
+ * @param cwd - workspace directory.
+ * @param path - ledger path.
+ * @returns the updated ledger.
+ */
+export async function dismissWorkspace(cwd, path = ledgerPath()) {
+  const ledger = await readLedger(path);
+  const key = normalizeCwd(cwd);
+  if (key.length === 0 || (ledger.dismissedCwds ?? []).includes(key)) return ledger;
+  ledger.dismissedCwds = [...(ledger.dismissedCwds ?? []), key];
+  await writeLedger(ledger, path);
+  return ledger;
 }
 
 /**
@@ -69,7 +116,15 @@ export function ledgerKey(source, externalId) {
  */
 export async function writeLedger(ledger, path = ledgerPath()) {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  const body = `${JSON.stringify(ledger, null, 2)}\n`;
+  const body = `${JSON.stringify(
+    {
+      version: LEDGER_VERSION,
+      entries: ledger.entries ?? {},
+      dismissedCwds: normalizeDismissed(ledger.dismissedCwds),
+    },
+    null,
+    2,
+  )}\n`;
   await writeFile(path, body, { encoding: 'utf8', mode: 0o600 });
 }
 

@@ -145,6 +145,12 @@ there. `--force` (or the checkbox-free `/import … --force`) imports again and
 produces a second session. Deleting the ledger makes everything importable
 again; it is plain JSON and safe to edit.
 
+Deleting a workspace from the sidebar is sticky. The importer records that
+directory under `dismissedCwds` and will not `create` it again on boot or on
+the next import. The session logs stay on disk and show under Ungrouped. An
+earlier boot reconcile re-created every ledger folder, which is why deleted
+rows kept coming back.
+
 ## Repairing what an earlier version wrote
 
 The ledger is also the recipe for rebuilding: it remembers which source session

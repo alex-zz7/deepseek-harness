@@ -15,7 +15,7 @@
 
 import { createImporter, SOURCE_IDS, SOURCES, formatListLine, summarizeListing, importSinceMs } from './library.js';
 import { verifyArtifact } from './build.js';
-import { ledgerPath, readLedger, forgetImport } from './ledger.js';
+import { ledgerPath, readLedger, forgetImport, dismissWorkspace, isDismissed, normalizeCwd } from './ledger.js';
 import { isAbsolute } from 'node:path';
 
 export { createImporter } from './library.js';
@@ -49,6 +49,7 @@ export function apply(ctx) {
   const importer = createImporter();
 
   ctx.inject(['workspaceRegistry'], (bound) => {
+    rememberWorkspaceDeletes(bound);
     void reconcileImportedSessions(bound).catch(() => {});
     return () => {};
   });
@@ -331,39 +332,87 @@ export function parseImportArgs(rawInput) {
  * Writing the artifact is not enough. The sidebar only lists a session once
  * the host has seen it, and it only sits under a workspace after
  * `attachSession`. Creating the folder alone produced empty workspace rows.
+ *
+ * A workspace the user already deleted stays deleted: startup reconcile never
+ * calls `create`, and an import that hits a dismissed cwd attaches nowhere.
  * @param ctx - host context.
  * @param results - import results carrying `sessionId` and `cwd`.
+ * @param options - `create` defaults to true for a fresh import; reconcile passes false.
  * @returns the workspace titles that received at least one session.
  */
-async function registerWorkspaces(ctx, results) {
+async function registerWorkspaces(ctx, results, options = {}) {
   const registry = ctx.get('workspaceRegistry');
   if (registry === undefined) return [];
+  const ledger = await readLedger();
+  const archived = new Set(registry.archivedSessionIds ?? []);
+  const allowCreate = options.create !== false;
   const claimed = results.filter(
     (result) =>
       result.ok !== false &&
       typeof result.sessionId === 'string' &&
       result.sessionId.length > 0 &&
       typeof result.cwd === 'string' &&
-      result.cwd.length > 0,
+      result.cwd.length > 0 &&
+      !archived.has(result.sessionId),
   );
   const workspaces = new Map();
   const titles = [];
+  const attached = [];
   for (const result of claimed) {
     try {
-      let workspace = workspaces.get(result.cwd);
+      const cwd = normalizeCwd(result.cwd);
+      let workspace = workspaces.get(cwd);
       if (workspace === undefined) {
-        workspace = await registry.create(result.cwd);
-        workspaces.set(result.cwd, workspace);
-        titles.push(workspace?.title ?? result.cwd.split('/').at(-1) ?? result.cwd);
+        workspace = workspaceByPath(registry, cwd);
+        if (workspace === undefined && allowCreate && !isDismissed(ledger, cwd)) {
+          workspace = await registry.create(result.cwd);
+        }
+        if (workspace === undefined) continue;
+        workspaces.set(cwd, workspace);
+        titles.push(workspace.title ?? cwd.split('/').at(-1) ?? cwd);
       }
       await workspace.attachSession(result.sessionId);
+      attached.push(result.sessionId);
     } catch {
       // A missing directory or a cwd the registry cannot resolve is not an import failure.
     }
   }
-  await hydrateImportedSessions(ctx, claimed.map((result) => result.sessionId));
-  await publishImportedSessions(ctx, claimed.map((result) => result.sessionId));
+  await hydrateImportedSessions(ctx, attached);
+  if (allowCreate) await publishImportedSessions(ctx, attached);
   return titles;
+}
+
+/** The registered workspace that already owns this directory, if any. */
+function workspaceByPath(registry, cwd) {
+  const wanted = normalizeCwd(cwd);
+  if (wanted.length === 0 || typeof registry.list !== 'function') return undefined;
+  return registry.list().find((workspace) => normalizeCwd(workspace.path) === wanted);
+}
+
+/**
+ * Remember sidebar deletes so a later import or boot cannot recreate the row.
+ * @param ctx - host context carrying `workspaceRegistry`.
+ */
+function rememberWorkspaceDeletes(ctx) {
+  const registry = ctx.get('workspaceRegistry') ?? ctx.workspaceRegistry;
+  if (registry === undefined || typeof registry.delete !== 'function') return;
+  if (registry.delete.__sessionImportWrapped === true) return;
+  const original = registry.delete.bind(registry);
+  const wrapped = async (id) => {
+    let cwd;
+    try {
+      cwd = registry.get(id)?.path;
+    } catch {
+      cwd = undefined;
+    }
+    const removed = await original(id);
+    if (removed === true && typeof cwd === 'string' && cwd.length > 0) {
+      await dismissWorkspace(cwd).catch(() => {});
+    }
+    return removed;
+  };
+  wrapped.__sessionImportWrapped = true;
+  registry.delete = wrapped;
 }
 
 /**
@@ -450,17 +499,23 @@ async function publishImportedSessions(ctx, sessionIds) {
 }
 
 /**
- * Attach sessions from an earlier import that only created empty folders.
+ * Attach imported sessions to workspaces that still exist.
+ *
+ * This must not call `create`. An earlier version re-registered every ledger
+ * cwd on boot, so a folder the user deleted came back with a new id every
+ * restart. Sessions whose folder is gone stay ungrouped; archived ids stay
+ * archived.
  * @param ctx - host context.
  */
 async function reconcileImportedSessions(ctx) {
   const ledger = await readLedger();
   const results = Object.values(ledger.entries).flatMap((entry) => {
     if (typeof entry?.sessionId !== 'string' || typeof entry?.cwd !== 'string') return [];
+    if (isDismissed(ledger, entry.cwd)) return [];
     return [{ ok: true, sessionId: entry.sessionId, cwd: entry.cwd }];
   });
   if (results.length === 0) return;
-  await registerWorkspaces(ctx, results);
+  await registerWorkspaces(ctx, results, { create: false });
 }
 
 /** One transcript row for the preview list. */
