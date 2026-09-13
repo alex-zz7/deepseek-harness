@@ -2,11 +2,12 @@
 /**
  * Cross-platform setup + launcher for DeepSeek Harness.
  *
- * Mac and Windows both run the same `dsh web` UI in a browser.
- * The native .app under mac/ is optional and Mac-only.
+ * Starts the local `dsh web` server and opens the native app window
+ * (Mac `.app` or Windows WebView2 exe). The system browser is not used.
  *
  *   node scripts/harness.mjs setup
  *   node scripts/harness.mjs start
+ *   node scripts/harness.mjs start --no-open
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -29,6 +30,8 @@ const PLUGINS = [
   'plugins/sidebar-editor',
   'plugins/global-skills',
   'plugins/knowledge-studio',
+  'plugins/language-pack',
+  'plugins/session-import',
   'plugins/web-fetch-proxy',
 ];
 
@@ -104,10 +107,31 @@ function portOf(url) {
   return match ? Number(match[1]) : 0;
 }
 
-function openBrowser(url) {
-  if (WIN) spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' }).unref();
-  else if (process.platform === 'darwin') spawn('open', [url], { detached: true, stdio: 'ignore' }).unref();
-  else spawn('xdg-open', [url], { detached: true, stdio: 'ignore' }).unref();
+const MAC_APP = join(ROOT, 'build', 'DeepSeek Harness.app');
+const WIN_EXE = join(ROOT, 'build', 'DeepSeekHarness.exe');
+
+function attachApp() {
+  if (process.platform === 'darwin' && existsSync(MAC_APP)) {
+    spawn('open', [MAC_APP], { detached: true, stdio: 'ignore' }).unref();
+    console.log('opening DeepSeek Harness.app');
+    return;
+  }
+  if (WIN && existsSync(WIN_EXE)) {
+    spawn(WIN_EXE, [], { detached: true, stdio: 'ignore' }).unref();
+    console.log('opening DeepSeekHarness.exe');
+    return;
+  }
+  if (process.platform === 'darwin') {
+    console.log('Build the Mac app first: ./mac/build.sh');
+    console.log('Then: open "build/DeepSeek Harness.app"');
+    return;
+  }
+  if (WIN) {
+    console.log('Build the Windows app first: win\\build.cmd');
+    console.log('Then: build\\DeepSeekHarness.exe');
+    return;
+  }
+  console.log('No native app on this platform. Server is running; do not open a browser.');
 }
 
 function setup() {
@@ -131,13 +155,13 @@ function setup() {
   console.log('Plugins ready.');
 }
 
-async function start({ open = true, forceNew = false } = {}) {
+async function start({ attach = true, forceNew = false } = {}) {
   setup();
   if (!forceNew) {
     const existing = readPublishedUrl();
     if (existing && (await probe(portOf(existing)))) {
       console.log(`reusing ${existing.replace(/\?token=.*/, '?token=…')}`);
-      if (open) openBrowser(existing);
+      if (attach) attachApp();
       return;
     }
   }
@@ -159,7 +183,7 @@ async function start({ open = true, forceNew = false } = {}) {
     opened = true;
     publishUrl(match[0]);
     console.log(`ready ${match[0].replace(/\?token=.*/, '?token=…')}`);
-    if (open) openBrowser(match[0]);
+    if (attach) attachApp();
   };
   child.stdout.on('data', consider);
   child.stderr.on('data', consider);
@@ -181,7 +205,7 @@ const flags = new Set(args.slice(1));
 if (cmd === 'setup') setup();
 else if (cmd === 'start') {
   start({
-    open: !flags.has('--no-open'),
+    attach: !flags.has('--no-open'),
     forceNew: flags.has('--new'),
   });
 } else {

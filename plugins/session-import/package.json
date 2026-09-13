@@ -1,0 +1,30 @@
+{
+  "name": "@alex/dsh-session-import",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Import external agent sessions (Cursor, Claude Code, Codex) into DeepSeek Harness as native v3 session logs under their original workspace.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./library": "./lib/library.js",
+    "./cli": "./scripts/import-sessions.mjs",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-import-sessions": "./scripts/import-sessions.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ],
+      "platform": "web"
+    }
+  }
+}

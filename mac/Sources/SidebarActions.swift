@@ -399,8 +399,8 @@ let sidebarActionsScript = #"""
   // ── voice input ───────────────────────────────────────────────────────
   //
   // The mic belongs to the composer's bottom-right row, just left of Send.
-  // Recognition runs in the shell — WebKit has no dependable speech API — so the
-  // button reports intent and the shell streams the transcript back in.
+  // Recognition is Whisper in the shell — WebKit has no dependable speech API —
+  // so the button reports intent and the shell streams the transcript back in.
 
   const MIC_PATH =
     '<path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/>';
@@ -449,6 +449,8 @@ let sidebarActionsScript = #"""
   let voiceBase = null;
   /** Running transcript for this session only — never re-read from the field. */
   let dictated = '';
+  /** × was pressed: ignore any late transcript from the shell. */
+  let voiceIgnore = false;
 
   function voicePrefix() {
     const prefix = voiceBase ?? '';
@@ -466,31 +468,13 @@ let sidebarActionsScript = #"""
   /**
    * Apply a live transcript from the shell.
    *
-   * The shell normally sends the whole session. After a pause it sometimes
-   * sends only the new sentence — treat that as an append, not a replace.
+   * Whisper re-decodes the whole take each flush, so every update replaces
+   * this session's span. Do not append: a reworded decode is a revision.
    */
   function writeTranscript(text, isFinal) {
+    if (voiceIgnore) return;
     const incoming = typeof text === 'string' ? text : '';
     if (!incoming) return;
-    if (isFinal) {
-      dictated = incoming;
-      writeField();
-      return;
-    }
-    if (dictated) {
-      const have = dictated.trim();
-      const next = incoming.trim();
-      const continues =
-        next.toLowerCase().startsWith(have.toLowerCase()) ||
-        have.toLowerCase().startsWith(next.toLowerCase()) ||
-        next.toLowerCase().includes(have.toLowerCase());
-      if (!continues) {
-        voiceBase = voicePrefix() + dictated;
-        dictated = incoming;
-        writeField();
-        return;
-      }
-    }
     dictated = incoming;
     writeField();
   }
@@ -551,6 +535,7 @@ let sidebarActionsScript = #"""
     cancel.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
+      voiceIgnore = true;
       dropDictated();
       closeVoiceBar();
       postVoice('dshVoiceCancel');
@@ -614,9 +599,7 @@ let sidebarActionsScript = #"""
   }
 
   function finishDictationKeepText() {
-    dictated = '';
-    voiceBase = null;
-    closeVoiceBar();
+    voiceIgnore = false;
     postVoice('dshVoiceFinish');
   }
 
@@ -672,7 +655,7 @@ let sidebarActionsScript = #"""
         state === 'listening'
           ? '停止听写'
           : state === 'starting'
-            ? '正在启动…'
+            ? message || '正在启动…'
             : state === 'failed'
               ? message || '语音不可用'
               : '语音输入';
@@ -680,6 +663,7 @@ let sidebarActionsScript = #"""
       button.setAttribute('aria-label', label);
     }
     if (state === 'listening' || state === 'starting') {
+      voiceIgnore = false;
       if (voiceBase === null) {
         const field = composerField();
         voiceBase = field ? composerValue(field) : '';
@@ -689,6 +673,13 @@ let sidebarActionsScript = #"""
       closeVoiceBar();
     }
     if (state === 'failed') console.warn('[voice]', message);
+    if (state === 'cancelled') {
+      voiceIgnore = true;
+      dropDictated();
+      dictated = '';
+      voiceBase = null;
+      return;
+    }
     if (state === 'idle' || state === 'failed') {
       dictated = '';
       voiceBase = null;

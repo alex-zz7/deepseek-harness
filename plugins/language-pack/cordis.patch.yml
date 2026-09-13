@@ -1,0 +1,6 @@
+# Client-only language pack. The host row exists so dsh-client-modules
+# can scan dsh.client and serve /plugins/language-pack/client.js.
+
+- insert:
+    - id: language-pack
+      name: dsh-language-pack

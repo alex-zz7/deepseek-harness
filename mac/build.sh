@@ -24,14 +24,17 @@ swiftc \
   -O \
   -swift-version 5 \
   -target "arm64-apple-macos$MIN_MACOS" \
+  -import-objc-header "$HERE/Sources/ExceptionCatch.h" \
   -framework AppKit \
   -framework WebKit \
   -framework AVFoundation \
-  -framework Speech \
   -o "$APP/Contents/MacOS/$BIN_NAME" \
+  "$HERE/Sources/ExceptionCatch.m" \
   "$HERE/Sources/main.swift" \
   "$HERE/Sources/SidebarActions.swift" \
   "$HERE/Sources/VoiceInput.swift" \
+  "$HERE/Sources/WhisperSTT.swift" \
+  "$HERE/Sources/ZhHans.swift" \
   "$HERE/Sources/ProjectPicker.swift"
 
 echo "==> Info.plist"
@@ -40,6 +43,7 @@ cp "$HERE/Info.plist" "$APP/Contents/Info.plist"
 echo "==> keep-dsh"
 cp "$HERE/keep-dsh.sh" "$APP/Contents/Resources/keep-dsh.sh"
 chmod 755 "$APP/Contents/Resources/keep-dsh.sh"
+cp "$HERE/Resources/TSCharacters.txt" "$APP/Contents/Resources/TSCharacters.txt"
 
 echo "==> icon"
 ICONSET="$BUILD/AppIcon.iconset"

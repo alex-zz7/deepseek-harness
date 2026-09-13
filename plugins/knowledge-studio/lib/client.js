@@ -16,6 +16,7 @@ window.__ModuleLoader__.load({
     const { useEffect, useLayoutEffect, useRef, useState } = react;
 
     const GITHUB_REPO = 'https://github.com/alex-zz7/deepseek-harness';
+    const SITE_URL = 'https://sent2x.com/deepseek-harness';
     const GITHUB_RETRIEVE_DOCS = `${GITHUB_REPO}/blob/main/docs/knowledge-retrieve.md`;
     const ACTION = 'knowledge-studio-action';
     const PAGE = 'knowledge-studio-page';
@@ -191,8 +192,9 @@ window.__ModuleLoader__.load({
       }
       .ks-sources-bar {
         position:relative; z-index:8; box-sizing:border-box; min-height:40px; flex:none; align-self:center;
-        width:min(var(--dsh-composer-card-max-width), calc(100% - 2 * var(--dsh-composer-side-clearance, 16px)));
-        margin:12px auto 2px; padding:12px 8px 10px;
+        width:min(var(--dsh-composer-card-max-width), calc(100% - 2 * var(--dsh-composer-side-clearance)));
+        max-width:var(--dsh-composer-card-max-width);
+        margin:0 auto; padding:8px 0 4px;
         display:grid; grid-template-columns:auto minmax(0, 1fr) auto; align-items:center; gap:10px;
         color:var(--dsw-alias-label-primary);
         border-top:.5px solid var(--dsw-alias-border-l3, rgba(127,127,127,.18));
@@ -217,14 +219,20 @@ window.__ModuleLoader__.load({
       }
       .ks-sources-bar .ks-src-close:hover { background:var(--dsw-alias-interactive-bg-hover); }
       .ks-settings-row {
-        display:flex; align-items:flex-start; justify-content:space-between; gap:16px; width:100%;
+        box-sizing:border-box; width:100%;
+        border-bottom:.5px solid var(--dsw-alias-border-l2);
+        align-items:center; gap:8px; padding:16px 0; display:flex;
       }
-      .ks-settings-row > div:first-child { min-width:0; }
-      .ks-settings-row b { display:block; font-weight:600; }
-      .ks-settings-row p { margin:4px 0 0; color:var(--dsw-alias-label-secondary); font-size:12px; word-break:break-all; }
-      .ks-settings-row a, .ks-github a { color:#4d6bfe; word-break:break-all; }
-      .ks-github { margin:16px 0 0; display:flex; flex-direction:column; gap:6px; }
-      .ks-github b { font-size:12px; }
+      .ks-settings-text { flex-direction:column; flex:1; gap:4px; min-width:0; padding-right:48px; display:flex; }
+      .ks-settings-title { color:var(--dsw-alias-label-primary); font-size:14px; font-weight:400; line-height:22px; }
+      .ks-settings-row a {
+        color:var(--dsw-alias-label-tertiary); font-size:12px; font-weight:400; line-height:18px;
+        text-decoration:none; word-break:break-all;
+      }
+      .ks-settings-row a:hover { color:#4d6bfe; }
+      .ks-github { margin:16px 0 0; display:flex; flex-direction:column; gap:10px; }
+      .ks-github b { display:block; font-size:12px; font-weight:600; }
+      .ks-github a { color:var(--dsw-alias-label-tertiary); word-break:break-all; }
     `;
 
     function ensureStyle() {
@@ -482,7 +490,7 @@ window.__ModuleLoader__.load({
             a.className = 'ks-file-link';
             a.setAttribute('data-ks-open', file);
             a.href = target.startsWith('file:') ? target : `file://${encodeURI(file)}`;
-            a.title = '点击在侧栏预览，⌥点击在文件夹中显示';
+            a.title = t('source.openHint');
             a.textContent = source?.name || prettyFileName(file) || raw;
             frag.appendChild(a);
             last = match.index + raw.length;
@@ -703,6 +711,7 @@ window.__ModuleLoader__.load({
     }
 
     function KnowledgeSourceBar(props) {
+      useLocaleTick();
       const sessionId = props.sessionId || sessionKey() || '';
       const [, setRev] = useState(0);
       useEffect(() => {
@@ -723,10 +732,10 @@ window.__ModuleLoader__.load({
         visibleSources = Array.isArray(state?.sources) ? state.sources : [];
       });
       if (window.__KS_PAGE__ !== true || !state) return null;
-      let title = '已检索';
-      if (state.loading) title = '正在检索本库…';
-      else if (state.error) title = '检索失败，仍按原问题发送';
-      else if (state.refuse) title = '本库没有足够相关的内容';
+      let title = t('source.ready');
+      if (state.loading) title = t('source.loading');
+      else if (state.error) title = t('source.error');
+      else if (state.refuse) title = t('source.refuse');
       return h(
         'div',
         { className: 'ks-sources-bar', 'data-ks-source-bar': sessionId },
@@ -743,7 +752,7 @@ window.__ModuleLoader__.load({
                     type: 'button',
                     key: source.open || source.path || source.name,
                     className: 'ks-src',
-                    title: '点击在侧栏预览，⌥点击在文件夹中显示',
+                    title: t('source.openHint'),
                     onClick: (event) => {
                       const file = fileFromHref(source.open) || '';
                       if (file) openKnowledgeFile(file, event.altKey || event.metaKey);
@@ -758,8 +767,8 @@ window.__ModuleLoader__.load({
           {
             type: 'button',
             className: 'ks-src-close',
-            title: '关闭检索信息',
-            'aria-label': '关闭检索信息',
+            title: t('source.close'),
+            'aria-label': t('source.close'),
             onClick: () => showSourceBar({ hidden: true }, sessionId),
           },
           '×',
@@ -839,7 +848,7 @@ window.__ModuleLoader__.load({
       if (!vault) return [];
       if (vault.sources?.length) return vault.sources.map((source) => ({ ...source, implicit: false }));
       if (vault.managed) return [];
-      return [{ path: vault.root, name: '库内资料', slug: '', implicit: true }];
+      return [{ path: vault.root, name: t('source.vaultFiles'), slug: '', implicit: true }];
     }
 
     function placeDialog(height = 360) {
@@ -859,6 +868,7 @@ window.__ModuleLoader__.load({
     }
 
     function SettingsSheet() {
+      useLocaleTick();
       ensureStyle();
       const [open, setOpen] = useState(false);
       const [vaultId, setVaultId] = useState(null);
@@ -968,14 +978,14 @@ window.__ModuleLoader__.load({
             ref: dialogRef,
             className: 'ks-dialog',
             role: 'dialog',
-            'aria-label': '知识库设置',
+            'aria-label': t('settings'),
             style: box,
           },
           h(
             'div',
             { className: 'ks-sheet-head' },
-            h('h2', null, setup ? '配置新知识库' : '知识库设置'),
-            h('button', { type: 'button', onClick: closeSheet }, '关闭'),
+            h('h2', null, setup ? t('settings.new') : t('settings')),
+            h('button', { type: 'button', onClick: closeSheet }, t('settings.close')),
           ),
           h(
             'div',
@@ -985,12 +995,12 @@ window.__ModuleLoader__.load({
                   react.Fragment,
                   null,
                   setup
-                    ? h('p', { className: 'ks-setup' }, '资料已挂上，正在构建索引。建好之前不能提问，否则搜不到这些资料。')
+                    ? h('p', { className: 'ks-setup' }, t('settings.building'))
                     : null,
                   h(
                     'label',
                     null,
-                    '名称',
+                    t('settings.name'),
                     h('input', {
                       value: name,
                       disabled: busy,
@@ -1015,7 +1025,7 @@ window.__ModuleLoader__.load({
                         h(
                           'label',
                           null,
-                          '库文件夹（索引在这里，不会改你的资料）',
+                          t('settings.folder'),
                           h(
                             'div',
                             { className: 'ks-path-row' },
@@ -1024,10 +1034,13 @@ window.__ModuleLoader__.load({
                               'p',
                               { className: 'ks-hint' },
                               vault.index?.ready
-                                ? `索引已建：${vault.index.chunks} 段 · ${vault.index.files} 个文件。向量在库文件夹里的 index/。`
+                                ? t('settings.indexReady', {
+                                    chunks: vault.index.chunks,
+                                    files: vault.index.files,
+                                  })
                                 : vault.index?.hasVectors === false && vault.index?.chunks
-                                  ? '分块在，但还没有向量文件。请再点一次「更新索引」。'
-                                  : '还没有向量索引。点「更新索引」构建。',
+                                  ? t('settings.noVectors')
+                                  : t('settings.noIndex'),
                             ),
                             h(
                               'div',
@@ -1043,7 +1056,7 @@ window.__ModuleLoader__.load({
                                       await revealInFolder(vault.root);
                                     }),
                                 },
-                                '打开库文件夹',
+                                t('settings.openFolder'),
                               ),
                               h(
                                 'button',
@@ -1058,7 +1071,7 @@ window.__ModuleLoader__.load({
                                       );
                                     }),
                                 },
-                                '打开索引文件夹',
+                                t('settings.openIndex'),
                               ),
                             ),
                           ),
@@ -1067,21 +1080,21 @@ window.__ModuleLoader__.load({
                           'p',
                           { className: 'ks-hint' },
                           vault.managed
-                            ? '资料只读引用，原文件不会被改动。'
-                            : '自带知识库：资料就在这个文件夹里。也可以再挂外部资料。',
+                            ? t('settings.readonly')
+                            : t('settings.managed'),
                         ),
                       ),
                   h(
                     'div',
                     { className: 'ks-sources' },
-                    h('div', null, sources.length ? `资料 ${sources.length} 项` : '资料'),
+                    h('div', null, sources.length ? t('settings.sourcesN', { n: sources.length }) : t('settings.sources')),
                     sources.length === 0
-                      ? h('p', { className: 'ks-hint' }, '还没有资料。添加文件或文件夹后，索引会只读它们。')
+                      ? h('p', { className: 'ks-hint' }, t('settings.noSources'))
                       : sources.map((source) =>
                           h(
                             'div',
                             { className: 'ks-source', key: source.path, title: source.path },
-                            h('div', null, h('strong', null, source.name || '资料')),
+                            h('div', null, h('strong', null, source.name || t('settings.source'))),
                             h(
                               'div',
                               { className: 'ks-path-actions' },
@@ -1096,7 +1109,7 @@ window.__ModuleLoader__.load({
                                       await revealInFolder(source.path);
                                     }),
                                 },
-                                '打开',
+                                t('settings.open'),
                               ),
                               source.implicit
                                 ? null
@@ -1119,7 +1132,7 @@ window.__ModuleLoader__.load({
                                           publishVaults(saved);
                                         }),
                                     },
-                                    '移除',
+                                    t('settings.remove'),
                                   ),
                             ),
                           ),
@@ -1150,21 +1163,20 @@ window.__ModuleLoader__.load({
                             await startIndexUpdate(vault.id);
                           }),
                       },
-                      '添加文件或文件夹',
+                      t('settings.add'),
                     ),
                   ),
                 )
-              : h('p', { className: 'ks-hint' }, '正在读取知识库…'),
+              : h('p', { className: 'ks-hint' }, t('settings.loading')),
             error ? h('p', { className: 'ks-error' }, error) : null,
             setup
               ? null
-              : h('p', { className: 'ks-hint' }, '更新索引只补新增或改过的文件。'),
+              : h('p', { className: 'ks-hint' }, t('settings.rebuildHint')),
             h(
               'div',
               { className: 'ks-github' },
-              h('b', null, 'GitHub'),
-              h('a', { href: GITHUB_REPO, target: '_blank', rel: 'noreferrer' }, GITHUB_REPO),
-              h('a', { href: GITHUB_RETRIEVE_DOCS, target: '_blank', rel: 'noreferrer' }, '检索对比说明'),
+              h('div', null, h('b', null, t('docs.github')), h('a', { href: GITHUB_REPO, target: '_blank', rel: 'noreferrer' }, GITHUB_REPO)),
+              h('div', null, h('b', null, t('docs.site')), h('a', { href: SITE_URL, target: '_blank', rel: 'noreferrer' }, SITE_URL)),
             ),
           ),
           h(
@@ -1188,12 +1200,12 @@ window.__ModuleLoader__.load({
                         window.dispatchEvent(new CustomEvent(ACTION, { detail: { kind: 'watch-rebuild' } }));
                       }),
                   },
-                  '更新索引',
+                  t('settings.rebuild'),
                 ),
             h(
               'button',
               { type: 'button', 'data-primary': '1', onClick: closeSheet },
-              '完成',
+              t('settings.done'),
             ),
           ),
       );
@@ -1201,6 +1213,7 @@ window.__ModuleLoader__.load({
     }
 
     function KnowledgeTrigger({ wide, onClose }) {
+      useLocaleTick();
       ensureStyle();
       const open = useKnowledgePage();
       const toggle = () => {
@@ -1216,12 +1229,12 @@ window.__ModuleLoader__.load({
             type: 'button',
             className: 'ks-trigger',
             'data-rail': wide ? undefined : '1',
-            title: open ? '知识库（已进入）' : '知识库（未进入）',
-            'aria-label': open ? '返回工作区' : '打开知识库',
+            title: open ? t('trigger.on') : t('trigger.off'),
+            'aria-label': open ? t('trigger.back') : t('trigger.open'),
             onClick: toggle,
           },
           h(BookIcon, { size: wide ? 16 : 18 }),
-          wide ? '知识库' : null,
+          wide ? t('trigger') : null,
           h('span', { className: 'ks-dot', 'data-on': open ? '1' : '0', 'aria-hidden': 'true' }),
         ),
       );
@@ -1231,23 +1244,27 @@ window.__ModuleLoader__.load({
       return h(react.Fragment, null, h(KnowledgeTrigger, props), h(SettingsSheet));
     }
 
-    function GithubDocsRow() {
+    function DocsLinkRow({ titleKey, href }) {
+      useLocaleTick();
       ensureStyle();
       return h(
         'div',
         { className: 'ks-settings-row' },
         h(
           'div',
-          null,
-          h('b', null, 'GitHub'),
-          h('p', null, GITHUB_REPO),
-        ),
-        h(
-          'a',
-          { href: GITHUB_RETRIEVE_DOCS, target: '_blank', rel: 'noreferrer' },
-          '检索对比',
+          { className: 'ks-settings-text' },
+          h('div', { className: 'ks-settings-title' }, t(titleKey)),
+          h('a', { href, target: '_blank', rel: 'noreferrer' }, href),
         ),
       );
+    }
+
+    function GithubRow() {
+      return h(DocsLinkRow, { titleKey: 'docs.github', href: GITHUB_REPO });
+    }
+
+    function SiteRow() {
+      return h(DocsLinkRow, { titleKey: 'docs.site', href: SITE_URL });
     }
 
     function ensureToast() {
@@ -1262,10 +1279,10 @@ window.__ModuleLoader__.load({
       }
       if (!el.querySelector('.ks-toast-text')) {
         el.innerHTML =
-          '<div class="ks-toast-row"><div class="ks-toast-text"></div><div class="ks-pct" hidden></div><button type="button" class="ks-toast-close" hidden>关闭</button></div>' +
+          `<div class="ks-toast-row"><div class="ks-toast-text"></div><div class="ks-pct" hidden></div><button type="button" class="ks-toast-close" hidden>${t('toast.close')}</button></div>` +
           '<p class="ks-toast-meta" hidden></p>' +
           '<div class="ks-bar" hidden><i></i></div>' +
-          '<button type="button" class="ks-toast-cancel" hidden>取消更新</button>';
+          `<button type="button" class="ks-toast-cancel" hidden>${t('toast.cancel')}</button>`;
         el.querySelector('.ks-toast-close').addEventListener('click', (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -1323,11 +1340,11 @@ window.__ModuleLoader__.load({
     }
 
     function phaseLabel(phase) {
-      if (phase === 'extract') return '正在提取文本';
-      if (phase === 'load') return '正在加载向量模型';
-      if (phase === 'embed') return '正在生成向量';
-      if (phase === 'write') return '正在写入索引';
-      return '正在更新索引';
+      if (phase === 'extract') return t('phase.extract');
+      if (phase === 'load') return t('phase.load');
+      if (phase === 'embed') return t('phase.embed');
+      if (phase === 'write') return t('phase.write');
+      return t('phase.update');
     }
 
     function humanizeLog(line, progress) {
@@ -1336,14 +1353,14 @@ window.__ModuleLoader__.load({
       }
       const text = String(line || '').trim();
       if (!text) return '';
-      if (/loading embedding model/i.test(text)) return '正在加载向量模型…';
-      if (/reusing .+ embedding/i.test(text)) return '正在生成向量…';
-      if (/found \d+ files/i.test(text)) return '正在扫描资料…';
-      if (/previous index|vault:|model:/i.test(text)) return '正在准备索引…';
-      if (/index is current/i.test(text)) return '资料没有变化，索引已是最新。';
-      if (/wrote index/i.test(text)) return '索引已写好。';
-      if (/nothing to index/i.test(text)) return '没有可索引的资料。';
-      return /[\u4e00-\u9fff]/.test(text) ? text : '正在更新索引…';
+      if (/loading embedding model/i.test(text)) return t('log.model');
+      if (/reusing .+ embedding/i.test(text)) return t('log.embed');
+      if (/found \d+ files/i.test(text)) return t('log.scan');
+      if (/previous index|vault:|model:/i.test(text)) return t('log.prepare');
+      if (/index is current/i.test(text)) return t('log.current');
+      if (/wrote index/i.test(text)) return t('log.wrote');
+      if (/nothing to index/i.test(text)) return t('log.empty');
+      return /[\u4e00-\u9fff]/.test(text) ? text : t('log.updating');
     }
 
     function dialogOpen() {
@@ -1424,7 +1441,7 @@ window.__ModuleLoader__.load({
       const card = el.querySelector('.ks-gate-card');
       const head = card?.querySelector('strong');
       const sub = card?.querySelector('span');
-      if (head) head.textContent = title || '索引还在构建，完成后才能提问';
+      if (head) head.textContent = title || t('gate.title');
       if (sub) {
         sub.textContent = detail || '';
         sub.hidden = !detail;
@@ -1461,10 +1478,10 @@ window.__ModuleLoader__.load({
           waiting,
           running
             ? progress
-              ? `请等构建完成再提问  ${progress.pct}%`
-              : '请等构建完成再提问'
-            : '这个库还没有索引，先等构建完成再提问',
-          progress ? humanizeLog('', progress) : running ? '正在更新索引…' : '',
+              ? t('gate.waitPct', { pct: progress.pct })
+              : t('gate.wait')
+            : t('gate.none'),
+          progress ? humanizeLog('', progress) : running ? t('log.updating') : '',
           progress,
         );
         return waiting;
@@ -1511,7 +1528,7 @@ window.__ModuleLoader__.load({
       const running = rebuild?.status === 'running';
       const progress = running ? rememberProgress(parseProgress(rebuild?.log)) : null;
       const text = running
-        ? `正在构建「${rebuild.vaultName || '知识库'}」`
+        ? t('toast.building', { name: rebuild.vaultName || t('trigger') })
         : notice?.text;
       if (!text) {
         el.hidden = true;
@@ -1537,7 +1554,7 @@ window.__ModuleLoader__.load({
       cancel.hidden = !running;
       if (running) {
         pct.textContent = progress ? `${progress.pct}%` : '…';
-        meta.textContent = humanizeLog(lastLogLine(rebuild?.log), progress) || '正在准备索引…';
+        meta.textContent = humanizeLog(lastLogLine(rebuild?.log), progress) || t('log.prepare');
         paintBar(bar, progress);
       }
     }
@@ -1562,13 +1579,13 @@ window.__ModuleLoader__.load({
           showNotice({
             kind: 'ok',
             text: /index is current/.test(log)
-              ? '资料没有变化，索引已是最新。'
-              : '索引已建好，可以开始提问了。',
+              ? t('log.current')
+              : t('toast.ready'),
           });
         } else if (state === 'cancelled') {
-          showNotice({ kind: 'ok', text: '已取消更新' });
+          showNotice({ kind: 'ok', text: t('toast.cancelled') });
         } else if (state === 'error') {
-          showNotice({ kind: 'error', text: next.rebuild?.error || '更新失败' });
+          showNotice({ kind: 'error', text: next.rebuild?.error || t('toast.failed') });
         } else {
           render();
         }
@@ -1599,14 +1616,161 @@ window.__ModuleLoader__.load({
         return;
       }
       if (detail.kind === 'watch-rebuild') {
-        showNotice({ kind: 'working', text: '正在扫描变更并更新索引…' }, 60000);
+        showNotice({ kind: 'working', text: t('toast.scanning') }, 60000);
         await watchRebuild();
       }
     }
 
-    const zh = { trigger: '知识库' };
-    const en = { trigger: 'Knowledge' };
+    const zh = {
+      trigger: '知识库',
+      'trigger.on': '知识库（已进入）',
+      'trigger.off': '知识库（未进入）',
+      'trigger.open': '打开知识库',
+      'trigger.back': '返回工作区',
+      settings: '知识库设置',
+      'settings.new': '配置新知识库',
+      'settings.close': '关闭',
+      'settings.done': '完成',
+      'settings.name': '名称',
+      'settings.folder': '库文件夹（索引在这里，不会改你的资料）',
+      'settings.indexReady': '索引已建：{chunks} 段 · {files} 个文件。向量在库文件夹里的 index/。',
+      'settings.noVectors': '分块在，但还没有向量文件。请再点一次「更新索引」。',
+      'settings.noIndex': '还没有向量索引。点「更新索引」构建。',
+      'settings.openFolder': '打开库文件夹',
+      'settings.openIndex': '打开索引文件夹',
+      'settings.readonly': '资料只读引用，原文件不会被改动。',
+      'settings.managed': '自带知识库：资料就在这个文件夹里。也可以再挂外部资料。',
+      'settings.sources': '资料',
+      'settings.sourcesN': '资料 {n} 项',
+      'settings.noSources': '还没有资料。添加文件或文件夹后，索引会只读它们。',
+      'settings.source': '资料',
+      'settings.open': '打开',
+      'settings.remove': '移除',
+      'settings.add': '添加文件或文件夹',
+      'settings.loading': '正在读取知识库…',
+      'settings.rebuildHint': '更新索引只补新增或改过的文件。',
+      'settings.rebuild': '更新索引',
+      'settings.building': '资料已挂上，正在构建索引。建好之前不能提问，否则搜不到这些资料。',
+      'docs.compare': '检索对比',
+      'docs.compareLong': '检索对比说明',
+      'docs.github': 'GitHub',
+      'docs.site': '官网',
+      'source.ready': '已检索',
+      'source.loading': '正在检索本库…',
+      'source.error': '检索失败，仍按原问题发送',
+      'source.refuse': '本库没有足够相关的内容',
+      'source.openHint': '点击在侧栏预览，⌥点击在文件夹中显示',
+      'source.close': '关闭检索信息',
+      'source.vaultFiles': '库内资料',
+      'phase.extract': '正在提取文本',
+      'phase.load': '正在加载向量模型',
+      'phase.embed': '正在生成向量',
+      'phase.write': '正在写入索引',
+      'phase.update': '正在更新索引',
+      'log.model': '正在加载向量模型…',
+      'log.embed': '正在生成向量…',
+      'log.scan': '正在扫描资料…',
+      'log.prepare': '正在准备索引…',
+      'log.current': '资料没有变化，索引已是最新。',
+      'log.wrote': '索引已写好。',
+      'log.empty': '没有可索引的资料。',
+      'log.updating': '正在更新索引…',
+      'gate.title': '索引还在构建，完成后才能提问',
+      'gate.wait': '请等构建完成再提问',
+      'gate.waitPct': '请等构建完成再提问  {pct}%',
+      'gate.none': '这个库还没有索引，先等构建完成再提问',
+      'toast.building': '正在构建「{name}」',
+      'toast.ready': '索引已建好，可以开始提问了。',
+      'toast.cancelled': '已取消更新',
+      'toast.failed': '更新失败',
+      'toast.scanning': '正在扫描变更并更新索引…',
+      'toast.close': '关闭',
+      'toast.cancel': '取消更新',
+    };
+    const en = {
+      trigger: 'Knowledge',
+      'trigger.on': 'Knowledge (open)',
+      'trigger.off': 'Knowledge (closed)',
+      'trigger.open': 'Open knowledge',
+      'trigger.back': 'Back to workspace',
+      settings: 'Knowledge settings',
+      'settings.new': 'Set up a new knowledge base',
+      'settings.close': 'Close',
+      'settings.done': 'Done',
+      'settings.name': 'Name',
+      'settings.folder': 'Library folder (the index lives here; your files are not changed)',
+      'settings.indexReady': 'Indexed: {chunks} chunks · {files} files. Vectors are in index/ inside the library folder.',
+      'settings.noVectors': 'Chunks are present, but the vector file is missing. Click Update index again.',
+      'settings.noIndex': 'No vector index yet. Click Update index to build it.',
+      'settings.openFolder': 'Open library folder',
+      'settings.openIndex': 'Open index folder',
+      'settings.readonly': 'Sources are read-only. Original files are not modified.',
+      'settings.managed': 'Bundled knowledge base: files live in this folder. You can also attach outside sources.',
+      'settings.sources': 'Sources',
+      'settings.sourcesN': '{n} sources',
+      'settings.noSources': 'No sources yet. After you add files or folders, the index reads them without changing them.',
+      'settings.source': 'Source',
+      'settings.open': 'Open',
+      'settings.remove': 'Remove',
+      'settings.add': 'Add files or folders',
+      'settings.loading': 'Loading knowledge base…',
+      'settings.rebuildHint': 'Updating the index only adds new or changed files.',
+      'settings.rebuild': 'Update index',
+      'settings.building': 'Sources are attached and the index is building. Wait before asking, or retrieval will miss them.',
+      'docs.compare': 'Retrieve comparison',
+      'docs.compareLong': 'Retrieve comparison notes',
+      'docs.github': 'GitHub',
+      'docs.site': 'Website',
+      'source.ready': 'Retrieved',
+      'source.loading': 'Searching this library…',
+      'source.error': 'Search failed; the original question will be sent',
+      'source.refuse': 'This library does not have enough related content',
+      'source.openHint': 'Click to preview in the sidebar; ⌥-click to show in the folder',
+      'source.close': 'Close retrieval info',
+      'source.vaultFiles': 'Library files',
+      'phase.extract': 'Extracting text',
+      'phase.load': 'Loading embedding model',
+      'phase.embed': 'Generating vectors',
+      'phase.write': 'Writing index',
+      'phase.update': 'Updating index',
+      'log.model': 'Loading embedding model…',
+      'log.embed': 'Generating vectors…',
+      'log.scan': 'Scanning sources…',
+      'log.prepare': 'Preparing index…',
+      'log.current': 'Nothing changed; the index is already current.',
+      'log.wrote': 'Index written.',
+      'log.empty': 'Nothing to index.',
+      'log.updating': 'Updating index…',
+      'gate.title': 'The index is still building; wait before asking',
+      'gate.wait': 'Wait for the build to finish before asking',
+      'gate.waitPct': 'Wait for the build to finish before asking  {pct}%',
+      'gate.none': 'This library has no index yet. Wait for the build to finish.',
+      'toast.building': 'Building “{name}”',
+      'toast.ready': 'Index is ready. You can start asking.',
+      'toast.cancelled': 'Update cancelled',
+      'toast.failed': 'Update failed',
+      'toast.scanning': 'Scanning changes and updating the index…',
+      'toast.close': 'Close',
+      'toast.cancel': 'Cancel update',
+    };
+    let ksT = (key, params) => {
+      const template = zh[key] || key;
+      if (!params) return template;
+      return template.replace(/\{(\w+)\}/g, (match, name) => (name in params ? String(params[name]) : match));
+    };
     const inject = ['slots', 'layout', 'locale', 'sidebarRight'];
+
+    function t(key, vars) {
+      return ksT(key, vars);
+    }
+
+    function useLocaleTick() {
+      const [, setRev] = useState(0);
+      useEffect(() => {
+        if (typeof window.__KS_LOCALE_SUB__ !== 'function') return undefined;
+        return window.__KS_LOCALE_SUB__(() => setRev((n) => n + 1));
+      }, []);
+    }
 
     function apply(ctx) {
       window.__ksOpenInSidebar = (address) => {
@@ -1615,6 +1779,15 @@ window.__ModuleLoader__.load({
         return true;
       };
       ctx.effect(() => ctx.locale.register('knowledge-studio', { zh, en }), 'knowledge-studio: locale');
+      ksT = ctx.locale.bind('knowledge-studio');
+      window.__KS_LOCALE_SUB__ = (fn) => ctx.locale.subscribe(fn);
+      ctx.effect(() => ctx.locale.subscribe(() => {
+        const el = document.getElementById('ks-toast');
+        const close = el?.querySelector('.ks-toast-close');
+        const cancel = el?.querySelector('.ks-toast-cancel');
+        if (close) close.textContent = t('toast.close');
+        if (cancel) cancel.textContent = t('toast.cancel');
+      }), 'knowledge-studio: toast locale');
       ctx.effect(
         () =>
           ctx.slots.inject('settings.general.item', () =>
@@ -1625,10 +1798,25 @@ window.__ModuleLoader__.load({
                 order: 80,
                 locale: 'knowledge-studio',
               },
-              GithubDocsRow,
+              GithubRow,
             ),
           ),
         'knowledge-studio: github docs',
+      );
+      ctx.effect(
+        () =>
+          ctx.slots.inject('settings.general.item', () =>
+            ctx.slots.register(
+              {
+                name: 'settings.general.item',
+                id: 'site-docs',
+                order: 81,
+                locale: 'knowledge-studio',
+              },
+              SiteRow,
+            ),
+          ),
+        'knowledge-studio: site docs',
       );
       if (isHarnessApp()) {
         ctx.effect(
@@ -1639,6 +1827,7 @@ window.__ModuleLoader__.load({
                   name: 'conversation.input.preamble',
                   id: 'knowledge-sources',
                   order: 0,
+                  locale: 'knowledge-studio',
                   inject: (sessionId) => ({ sessionId }),
                 },
                 KnowledgeSourceBar,

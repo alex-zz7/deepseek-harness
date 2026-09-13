@@ -1,28 +1,27 @@
 # DeepSeek Harness
 
-本地 DeepSeek Agent 界面。macOS / Windows 一条命令打开同一个 `dsh web`。
+本地 DeepSeek App。Mac / Windows 都在应用窗口里用，不打开系统浏览器。
 
 产品页：<https://sent2x.com/deepseek-harness>
 
-Local DeepSeek agent UI. The same `dsh web` surface on **macOS and Windows**.
-
-Windows does not get a second native shell. Both platforms start one `dsh web`
-server and open the browser — that is the whole product. The Mac `.app` is an
-optional WKWebView wrapper around the same server.
+Local DeepSeek app. **macOS and Windows** both open a native window around the
+same `dsh web` server. Safari, Chrome, and Edge are not part of the flow.
 
 ## 软件特色
 
-- **本机运行**：会话、知识库、工作区都在你电脑上。一条 `npm start` 装插件、起服务、打开浏览器。
+- **本机 App**：会话、知识库、工作区都在你电脑上。界面嵌在应用窗口里。
 - **先认文档再读正文**：问 `Gptimage skill 原理？` 会打开 `gptimage2/SKILL.md`，不再把八份无关 skill 塞进上下文。[检索对比](docs/knowledge-retrieve.md)
 - **本地知识库**：侧栏建库、挂文件、更新索引；索引在库文件夹里，不改你的原文。
 - **七种界面语言**：中文、English、繁體中文、日本語、한국어、Français、Español。设置 → 通用 → 语言。
 - **侧栏编辑器**：行号、高亮、查找替换、⌘S；外部改过的文件不会被覆盖。
 - **共用技能目录**：同时看见 `~/.cursor`、`~/.claude`、`~/.codex` 里的 skill。
-- **可选 Mac 应用**：WKWebView 壳，和浏览器共用一台服务器；支持本地 Whisper 语音输入。
+- **会话置顶**：悬停钉住，顶部单独「置顶」分组；右键还能打开 / 重命名 / 分叉 / 归档。
+- **Whisper 语音输入**：输入框旁麦克风，本地听写。
+- **GitHub**：菜单栏「帮助 → GitHub 仓库」；工作区菜单「从 GitHub 克隆…」，原生选择器列出本地项目和 gh 仓库。
 
 ## 相对官方 DSH 新增
 
-官方界面只有中文 / English，没有知识库工作室，侧栏预览只读。这个仓库补上了：
+官方界面只有中文 / English，没有知识库工作室，侧栏预览只读，并且会打开系统浏览器。这个仓库补上了：
 
 | 新增 | 位置 |
 |---|---|
@@ -30,52 +29,60 @@ optional WKWebView wrapper around the same server.
 | 五种额外语言 | `plugins/language-pack` |
 | 可编辑侧栏 | `plugins/sidebar-editor` |
 | 全局技能根 | `plugins/global-skills` |
-| Mac / Windows 一键启动 | `npm start` / `start.cmd` / `start.sh` |
-| 可选 Mac `.app` + 语音输入 | `mac/` |
+| 会话置顶 + 顶部置顶分组 | `mac/Sources/SidebarActions.swift`、`plugins/workspace-fork` |
+| 右键菜单（打开 / 重命名 / 分叉 / 置顶 / 归档） | `mac/Sources/SidebarActions.swift` |
+| Whisper 语音输入 | `mac/Sources/VoiceInput.swift`、`WhisperSTT.swift` |
+| 菜单栏 GitHub / 检索说明 | `mac/Sources/main.swift` 帮助菜单 |
+| 从 GitHub 克隆 + 原生项目选择器 | `plugins/workspace-fork`、`mac/Sources/ProjectPicker.swift` |
+| 记住工作区展开、任务中工作区行不消失 | `sidebar-editor` ui-state、`conversation-fork` |
+| 模型 / Effort 悬停展开 | `plugins/model-select-fork` |
+| 导入 Cursor / Claude Code / Codex 会话 | `plugins/session-import` |
+| Mac 应用窗口 | `mac/`（WKWebView） |
+| Windows 应用窗口 | `win/`（WebView2） |
 | TUN/fake-IP 下的 `web_fetch` | `plugins/web-fetch-proxy` |
 
 ## Quick start (Mac & Windows)
 
 Need **Node.js 20+**. `dsh` is pulled through `npx` if it is not already on PATH.
+Windows also needs the [.NET 8 SDK](https://dotnet.microsoft.com/download) once, to build the app.
 
 ```bash
 git clone https://github.com/alex-zz7/deepseek-harness.git
 cd deepseek-harness
-npm start
 ```
 
-Windows can also double-click `start.cmd`. macOS / Linux can run `./start.sh`.
-
-`npm start` will:
-
-1. `dsh plugin --profile web add` every package under `plugins/`
-2. Reuse a live server from `~/.dsh/web-url`, or start `dsh web --no-open --port 0`
-3. Open the token URL in your default browser
-
-```bash
-npm run setup              # plugins only
-node scripts/harness.mjs start --new      # force a fresh server
-node scripts/harness.mjs start --no-open  # print the URL only
-```
-
-## Optional: native macOS app
-
-No Electron. No Rust. No Xcode project — `swiftc` from the Command Line Tools.
+macOS:
 
 ```bash
 ./mac/build.sh
 open "build/DeepSeek Harness.app"
 ```
 
-To watch stderr while debugging:
+Windows (Command Prompt):
+
+```bat
+win\build.cmd
+build\DeepSeekHarness.exe
+```
+
+The app starts the local server if needed and loads the UI in its own window.
+`npm start` / `start.cmd` / `start.sh` only install plugins, start `dsh web`,
+and open that app — they do **not** open the system browser.
+
+```bash
+npm run setup              # plugins only
+node scripts/harness.mjs start --new      # force a fresh server, then open the app
+node scripts/harness.mjs start --no-open  # server only, no app window
+```
+
+To watch Mac stderr while debugging:
 
 ```bash
 "build/DeepSeek Harness.app/Contents/MacOS/DeepSeekHarness"
 ```
 
-The app and a browser tab share one server (see `~/.dsh/web-url`), so they do
-not fight over session locks. `./mac/open-in-browser.sh` is the older Mac-only
-attach script; `npm start` is the cross-platform one.
+`./mac/open-in-browser.sh` is an older attach script. Do not use it for normal
+use.
 
 ## Knowledge retrieve
 
@@ -139,9 +146,9 @@ So the URL is now **published** to `~/.dsh/web-url`:
 Both ends probe with a bare TCP connect, because following the real URL would
 consume the single-use token.
 
-The result: open the app and a browser tab and they are two clients of one
-server, so a session open in one works in the other. The app only ever
-terminates a server it started itself.
+The result: two app windows are two clients of one server, so a session open
+in one works in the other. The app only ever terminates a server it started
+itself.
 
 ## Native bits
 
@@ -151,7 +158,7 @@ terminates a server it started itself.
 | Menus | 文件 / 编辑 / 显示 / 窗口, standard App menu |
 | Shortcuts | ⌘N new window · ⌘R reload · ⇧⌘R hard reload · ⌘+ / ⌘− / ⌘0 zoom · ⌃⌘F full screen · ⌘Q quit |
 | Edit menu | ⌘C/⌘V/⌘A/⌘Z are wired to the responder chain, which is what makes them work inside the web view's text fields |
-| Links | `127.0.0.1` stays in-app; anything else opens in your default browser |
+| Links | Stay in the app window. The system browser is not part of normal use. |
 | Dock | Custom generated `.icns` icon |
 
 ## What you get from DSH already
@@ -206,16 +213,21 @@ file tabs (see below).
 ## Layout
 
 ```
-start.cmd / start.sh / npm start   # Mac + Windows browser launcher
+start.cmd / start.sh / npm start   # start local server, open the app
 scripts/harness.mjs                # setup plugins + start dsh web
-mac/                               # optional native macOS .app
-  Sources/                         # WKWebView shell
+mac/                               # macOS WKWebView app
+  Sources/
   build.sh
+win/                               # Windows WebView2 app
+  Program.cs
+  build.cmd
 plugins/
   knowledge-studio/                # local vaults + retrieval bar
+  language-pack/                   # extra UI languages
   sidebar-editor/                  # editable right-sidebar tabs
   workspace-fork/ conversation-fork/ model-select-fork/ agent-preset-fork/
   global-skills/
+  session-import/                  # Cursor / Claude Code / Codex → DSH sessions
   web-fetch-proxy/                 # fake-IP DNS + local HTTP proxy
 knowledge/                         # notes + optional local RAG helper
 build/                             # generated, not source

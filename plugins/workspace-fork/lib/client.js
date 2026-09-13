@@ -57,7 +57,7 @@ window.__ModuleLoader__.load({
 			return (vaults || []).find((vault) => normalizeVaultPath(vault.root) === resolved);
 		}
 		function looksLikeVaultPath(path) {
-			const text = normalizeVaultPath(path);
+			const text = normalizeVaultPath(path).replace(/\\/g, "/");
 			return text.endsWith("/knowledge") || text.includes("/knowledge-vaults/");
 		}
 		function isVaultWorkspace(workspace, vaults) {
@@ -95,8 +95,10 @@ window.__ModuleLoader__.load({
 			return known;
 		}
 		function pageWorkspaces(workspaces, vaults, knowledgePage) {
-			if (!isHarnessApp()) return workspaces || [];
 			const partitioned = partitionWorkspaces(workspaces, vaults);
+			// Browser and official dsh web share this bundle and the same
+			// workspace registry as the app. Vault folders stay app-only.
+			if (!isHarnessApp()) return partitioned.regularRows;
 			return effectiveKnowledgePage(knowledgePage) ? partitioned.vaultRows : partitioned.regularRows;
 		}
 		function effectiveKnowledgePage(requested) {
@@ -319,7 +321,6 @@ window.__ModuleLoader__.load({
 			return pageWorkspaces(workspaces, vaults, knowledgePage);
 		}
 		function filterSessionListForPage(list, workspaces, vaults, knowledgePage) {
-			if (!isHarnessApp()) return list;
 			const wantVault = effectiveKnowledgePage(knowledgePage);
 			const byId = {};
 			const ids = [];
@@ -791,11 +792,20 @@ window.__ModuleLoader__.load({
 			const accounted = /* @__PURE__ */ new Set();
 			for (const workspace of workspaces) {
 				const members = [];
+				const root = normalizeVaultPath(workspace.path);
 				for (const id of workspace.sessionIds) {
 					const summary = list.byId[id];
 					if (summary === void 0) continue;
 					accounted.add(id);
 					if (!sessionVisible(summary, list.current, archived)) continue;
+					members.push(summary);
+				}
+				for (const id of list.ids || []) {
+					if (accounted.has(id)) continue;
+					const summary = list.byId[id];
+					if (summary === void 0 || !sessionVisible(summary, list.current, archived)) continue;
+					if (normalizeVaultPath(summary.cwd) !== root) continue;
+					accounted.add(id);
 					members.push(summary);
 				}
 				groups.push(buildGroup(workspace.workspaceId, workspace.workspaceId, workspace.path, Date.parse(workspace.createdAt), workspace.title, members, "account"));
@@ -2534,7 +2544,12 @@ window.__ModuleLoader__.load({
 			const expandedGroups = (0, react.useMemo)(() => Object.entries(groupExpansion).filter(([, expanded]) => expanded).map(([key]) => key), [groupExpansion]);
 			const ungroupedSessionIds = (0, react.useMemo)(() => {
 				const accounted = new Set(workspaces.flatMap((workspace) => workspace.sessionIds));
-				return list.ids.filter((id) => list.byId[id] !== void 0 && !accounted.has(id));
+				const roots = new Set(workspaces.map((workspace) => normalizeVaultPath(workspace.path)).filter(Boolean));
+				return list.ids.filter((id) => {
+					const session = list.byId[id];
+					if (session === void 0 || accounted.has(id)) return false;
+					return !roots.has(normalizeVaultPath(session.cwd));
+				});
 			}, [list, workspaces]);
 			(0, react.useEffect)(() => {
 				if (list.phase !== "ready") return;

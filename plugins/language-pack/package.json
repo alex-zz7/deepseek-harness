@@ -1,0 +1,24 @@
+{
+  "name": "dsh-language-pack",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Extra UI languages for Settings → Language: 繁體中文, 日本語, 한국어, Français, Español.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}

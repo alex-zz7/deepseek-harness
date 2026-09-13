@@ -1,10 +1,11 @@
 {
   "name": "deepseek-harness",
   "private": true,
-  "description": "Local DeepSeek agent UI for macOS and Windows: knowledge vaults, sidebar editor, and seven UI languages.",
+  "description": "Local DeepSeek app for macOS and Windows: knowledge vaults, sidebar editor, seven UI languages, and a native window — no system browser.",
   "scripts": {
     "setup": "node scripts/harness.mjs setup",
     "start": "node scripts/harness.mjs start",
-    "build:mac": "bash mac/build.sh"
+    "build:mac": "bash mac/build.sh",
+    "build:win": "cmd /c win\\build.cmd"
   }
 }

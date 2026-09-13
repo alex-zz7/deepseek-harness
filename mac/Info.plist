@@ -18,6 +18,8 @@
 	<string>1.0.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>https://github.com/alex-zz7/deepseek-harness · 检索说明见帮助菜单</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSApplicationCategoryType</key>
@@ -28,12 +30,10 @@
 	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
-	<!-- Voice input: dictation into the composer. Both strings are required —
-	     macOS terminates the app on the first request without them. -->
+	<!-- Voice input: dictation into the composer. Microphone is required;
+	     recognition now runs through Whisper, not Apple Speech. -->
 	<key>NSMicrophoneUsageDescription</key>
 	<string>用于把你说的话转成文字，填入输入框。</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>用于把麦克风里的语音识别成文字。</string>
 	<!-- Files and Folders. Without these strings, macOS still prompts but
 	     often forgets the grant, so Desktop/Documents/Downloads come back
 	     every launch — especially after a rebuild. -->

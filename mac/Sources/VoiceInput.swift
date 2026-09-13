@@ -1,33 +1,27 @@
 // Dictation for the composer.
 //
-// Native on purpose. The user asked whether Doubao's component could be copied;
-// it cannot — that is another vendor's proprietary UI and assets. This builds
-// the same *behaviour* from Apple's own frameworks: a mic affordance whose
-// results stream into the composer as you speak.
-//
-// Recognition runs through `SFSpeechRecognizer`, preferring on-device
-// recognition when the locale supports it, so audio need not leave the machine.
-//
-// Continuous by design. The recogniser ends a segment the moment it believes
-// the speaker stopped — silence endpointing arrives as `isFinal`, and a pause
-// can just as well come back as a `noSpeechDetected`-class error. Treating
-// either as "the user is done" is exactly what made the first version drop out
-// at the first pause. So the audio graph now stays up for the whole session and
-// only the *recognition task* is recycled: finished segments fold into the
-// running transcript, which is republished on every update.
-//
-// @see SidebarActions.swift for the button, which is injected into the page.
+// Cursor's mic is a streaming Whisper backend. Apple's `SFSpeechRecognizer`
+// is a different stack — it endpoint-segments on pauses and is the reason
+// earlier versions dropped words or jumped sentences. This records PCM and
+// sends it to `WhisperEngine`, the same model family Cursor uses.
 
 import AVFoundation
 import Foundation
-import Speech
 
 final class VoiceInput: NSObject {
     enum State: Equatable {
         case idle
-        case starting
+        case starting(String)
         case listening
+        case cancelled
         case failed(String)
+
+        var isBusy: Bool {
+            switch self {
+            case .starting, .listening: return true
+            default: return false
+            }
+        }
     }
 
     /// Called on the main queue whenever the state changes.
@@ -44,289 +38,487 @@ final class VoiceInput: NSObject {
         }
     }
 
-    private lazy var recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN"))
-    private let engine = AVAudioEngine()
-    /// Guards `request`: the audio thread reads it while the main queue swaps it.
-    private let lock = NSLock()
-    private var request: SFSpeechAudioBufferRecognitionRequest?
-    private var task: SFSpeechRecognitionTask?
+    private var engine = AVAudioEngine()
+    private let sampleLock = NSLock()
+    private let work = DispatchQueue(label: "dsh.voice.flush")
+    private var samples: [Int16] = []
+    /// Fractional input-frame cursor so resampling is continuous across taps.
+    private var resampleCursor: Double = 0
     private var tapInstalled = false
-    /// Set by the user, cleared only by `stop()`. Segment recycling is
-    /// invisible to it — the session runs until the mic is toggled off.
+    private var transcribeFailures = 0
     private var wantsListening = false
-    private var restart: DispatchWorkItem?
-    /// Text closed out by finished segments, plus the segment in flight.
+    private var flushTimer: DispatchSourceTimer?
+    private var flushBusy = false
+    private var flushAgain = false
+    private var flushAgainFinal = false
+    private var flushCompletions: [() -> Void] = []
+    private var lastFlushCount = 0
+    private var lastPublished = ""
+    /// Closed-out sentences. Later flushes must not send this audio again.
     private var committed = ""
-    private var partial = ""
-    /// On-device recognition is preferred, but a model that is missing or
-    /// broken fails instantly and repeatedly; fall back to the server
-    /// recogniser rather than failing the session.
-    private var useOnDevice = true
-    private var fastFailures = 0
-    private var segmentStarted = Date()
-    /// Bumped on every recycle so a cancelled task cannot publish or restart.
-    private var segmentID = 0
+    private var sessionID = 0
+    private var cancelled = false
 
     /// Start listening, or stop if already listening.
     func toggle() {
-        if state == .listening || state == .starting { stop() } else { beginWithPermission() }
+        if state.isBusy { stop() } else { beginWithPermission() }
     }
 
-    /// Stop for real: tear the audio graph down and release the transcript span.
-    func stop() { teardown(.publish) }
+    /// Stop for real: one last transcript, then release the span.
+    func stop() {
+        endSession(mode: .publish)
+    }
 
-    /// Stop and throw the transcript away. The page removes its own span, so
-    /// nothing is republished.
-    func cancel() { teardown(.discard) }
+    /// Stop and throw the transcript away. The page restores the field itself.
+    func cancel() {
+        cancelled = true
+        sessionID += 1
+        wantsListening = false
+        stopFlushes()
+        teardown(.discard)
+    }
 
     /// Stop because the message is being sent: the composer already holds the
-    /// text, and republishing would rewrite it under the send.
-    func finish() { teardown(.silent) }
+    /// text, so the last flush must not rewrite it after the page has moved on.
+    func finish() {
+        endSession(mode: .silent)
+    }
 
     private enum Teardown { case publish, discard, silent }
 
-    private func teardown(_ mode: Teardown) {
-        let wasListening = wantsListening
+    private func endSession(mode: Teardown) {
         wantsListening = false
-        restart?.cancel()
-        restart = nil
-        task?.cancel()
-        task = nil
-        setRequest(nil)
+        stopFlushes()
+        enqueueFlush(final: true) { [weak self] in
+            self?.teardown(mode)
+        }
+    }
 
-        if engine.isRunning { engine.stop() }
-        if tapInstalled {
-            engine.inputNode.removeTap(onBus: 0)
-            tapInstalled = false
+    private func teardown(_ mode: Teardown) {
+        discardEngine()
+
+        if mode == .publish, !lastPublished.isEmpty {
+            onText?(lastPublished, true)
         }
 
-        // Hand the transcript over as final so the page stops treating it as
-        // replaceable — but only if this session actually produced something.
-        if wasListening, mode == .publish, !transcript.isEmpty {
-            onText?(transcript, true)
-        }
+        sampleLock.lock()
+        samples.removeAll(keepingCapacity: false)
+        sampleLock.unlock()
+        lastFlushCount = 0
+        lastPublished = ""
         committed = ""
-        partial = ""
-        fastFailures = 0
+        flushAgain = false
+        flushAgainFinal = false
         if case .failed = state { return }
+        if mode == .discard {
+            state = .cancelled
+            return
+        }
         state = .idle
     }
 
-    // MARK: - the pipeline
+    // MARK: - start
 
     private func beginWithPermission() {
-        state = .starting
-
-        SFSpeechRecognizer.requestAuthorization { [weak self] speechStatus in
-            guard let self else { return }
-            guard speechStatus == .authorized else {
-                DispatchQueue.main.async { self.fail("语音识别权限被拒绝") }
-                return
-            }
-            // `AVCaptureDevice` rather than `AVAudioApplication`: the latter is
-            // macOS 14+, and this app targets 13.
-            AVCaptureDevice.requestAccess(for: .audio) { granted in
-                DispatchQueue.main.async {
-                    guard granted else {
-                        self.fail("麦克风权限被拒绝")
-                        return
-                    }
-                    self.startEngine()
+        state = .starting("正在启动麦克风…")
+        AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                guard granted else {
+                    self.fail("麦克风权限被拒绝")
+                    return
+                }
+                // Record first. Whisper can warm up while the first words
+                // are already in the buffer — waiting for the model is what
+                // dropped the start of the take.
+                self.sessionID += 1
+                self.cancelled = false
+                self.committed = ""
+                self.startEngine()
+                if !WhisperEngine.shared.isReady {
+                    WhisperEngine.shared.prepare(
+                        progress: { _ in },
+                        completion: { [weak self] result in
+                            guard let self else { return }
+                            if case .failure(let error) = result, self.state == .listening {
+                                self.fail(error.localizedDescription)
+                            }
+                        }
+                    )
                 }
             }
         }
     }
 
     private func startEngine() {
-        guard let recognizer, recognizer.isAvailable else {
-            state = .failed("中文识别器当前不可用")
-            return
-        }
-
+        sampleLock.lock()
+        samples.removeAll(keepingCapacity: true)
+        sampleLock.unlock()
+        lastFlushCount = 0
+        lastPublished = ""
+        transcribeFailures = 0
+        resampleCursor = 0
         committed = ""
-        partial = ""
-        fastFailures = 0
-        segmentID = 0
-        useOnDevice = recognizer.supportsOnDeviceRecognition
         wantsListening = true
-        segmentStarted = Date()
 
-        // One tap for the whole session: the closure appends into whichever
-        // request is current, so recycling a task never interrupts the audio.
-        if !tapInstalled {
-            let input = engine.inputNode
-            let format = input.outputFormat(forBus: 0)
+        // A leftover graph from a previous session can make `prepare()` abort
+        // the process. Tear it down and use a fresh engine each take.
+        discardEngine()
+        engine = AVAudioEngine()
+
+        let input = engine.inputNode
+        let hardware = input.inputFormat(forBus: 0)
+        let format = (hardware.sampleRate > 0 && hardware.channelCount > 0)
+            ? hardware
+            : input.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            fail("麦克风当前不可用")
+            return
+        }
+
+        // installTap / start raise NSException on an invalid graph — Swift
+        // `try` does not catch those, which is why the first Whisper build
+        // aborted the app the moment the mic was opened.
+        var caught: NSError?
+        let installed = DSHCatchException({
             input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-                guard let self else { return }
-                let level = Self.level(of: buffer)
-                self.lock.lock()
-                self.request?.append(buffer)
-                self.lock.unlock()
-                self.report(level: level)
+                self?.ingest(buffer)
             }
-            tapInstalled = true
+        }, &caught)
+        guard installed else {
+            fail("无法开始录音：\(caught?.localizedDescription ?? "音频图初始化失败")")
+            return
         }
+        tapInstalled = true
 
-        engine.prepare()
-        do {
-            try engine.start()
-        } catch {
-            stop()
-            state = .failed("无法开始录音：\(error.localizedDescription)")
+        var startError: NSError?
+        let started = DSHCatchException({
+            do {
+                try self.engine.start()
+            } catch {
+                startError = error as NSError
+            }
+        }, &caught)
+        if !started || !engine.isRunning {
+            fail("无法开始录音：\((startError ?? caught)?.localizedDescription ?? "音频引擎启动失败")")
             return
         }
 
-        // Announce the session before opening the first segment: a segment that
-        // refuses to start fails the session, and must not then be overwritten
-        // by a stale `listening`.
         state = .listening
-        beginSegment()
+        startFlushes()
     }
 
-    /// Open one recognition segment. Called when the session starts and again
-    /// every time the recogniser closes a segment; the engine keeps running.
-    private func beginSegment() {
-        guard wantsListening else { return }
-        guard let recognizer, recognizer.isAvailable else {
-            fail("中文识别器当前不可用")
+    private func discardEngine() {
+        if engine.isRunning { engine.stop() }
+        if tapInstalled {
+            _ = DSHCatchException({
+                self.engine.inputNode.removeTap(onBus: 0)
+            }, nil)
+            tapInstalled = false
+        }
+        engine.reset()
+    }
+
+    private func ingest(_ buffer: AVAudioPCMBuffer) {
+        let level = Self.level(of: buffer)
+        report(level: level)
+
+        // Same samples the meter sees — do not go through AVAudioConverter.
+        // On this machine the converter was producing empty PCM while the
+        // waveform still moved, so Whisper never heard anything.
+        let mono = Self.monoFloats(from: buffer)
+        guard !mono.isEmpty else { return }
+        let inRate = max(buffer.format.sampleRate, 1)
+        let step = inRate / 16_000
+        var cursor = resampleCursor
+        var pcm: [Int16] = []
+        pcm.reserveCapacity(max(1, Int(Double(mono.count) / step) + 1))
+        while cursor < Double(mono.count) {
+            let sample = max(-1, min(1, mono[Int(cursor)]))
+            pcm.append(Int16(sample * 32767))
+            cursor += step
+        }
+        resampleCursor = cursor - Double(mono.count)
+        guard !pcm.isEmpty else { return }
+        sampleLock.lock()
+        samples.append(contentsOf: pcm)
+        sampleLock.unlock()
+    }
+
+    /// Mix every channel down to mono floats in -1…1.
+    private static func monoFloats(from buffer: AVAudioPCMBuffer) -> [Float] {
+        let frames = Int(buffer.frameLength)
+        let channels = Int(max(buffer.format.channelCount, 1))
+        guard frames > 0 else { return [] }
+        var out = [Float](repeating: 0, count: frames)
+        if let data = buffer.floatChannelData {
+            if buffer.format.isInterleaved {
+                for index in 0 ..< frames {
+                    var sum: Float = 0
+                    for channel in 0 ..< channels {
+                        sum += data[0][index * channels + channel]
+                    }
+                    out[index] = sum / Float(channels)
+                }
+            } else {
+                for index in 0 ..< frames {
+                    var sum: Float = 0
+                    for channel in 0 ..< channels {
+                        sum += data[channel][index]
+                    }
+                    out[index] = sum / Float(channels)
+                }
+            }
+            return out
+        }
+        if let data = buffer.int16ChannelData {
+            if buffer.format.isInterleaved {
+                for index in 0 ..< frames {
+                    var sum: Float = 0
+                    for channel in 0 ..< channels {
+                        sum += Float(data[0][index * channels + channel]) / 32768
+                    }
+                    out[index] = sum / Float(channels)
+                }
+            } else {
+                for index in 0 ..< frames {
+                    var sum: Float = 0
+                    for channel in 0 ..< channels {
+                        sum += Float(data[channel][index]) / 32768
+                    }
+                    out[index] = sum / Float(channels)
+                }
+            }
+            return out
+        }
+        return []
+    }
+
+    // MARK: - flush
+
+    private func startFlushes() {
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + 0.5, repeating: 1.0)
+        timer.setEventHandler { [weak self] in
+            self?.enqueueFlush(final: false)
+        }
+        timer.resume()
+        flushTimer = timer
+    }
+
+    private func stopFlushes() {
+        flushTimer?.cancel()
+        flushTimer = nil
+    }
+
+    private func enqueueFlush(final: Bool, completion: (() -> Void)? = nil) {
+        if let completion { flushCompletions.append(completion) }
+        if flushBusy {
+            flushAgain = true
+            flushAgainFinal = flushAgainFinal || final
             return
         }
-
-        let request = SFSpeechAudioBufferRecognitionRequest()
-        request.shouldReportPartialResults = true
-        request.taskHint = .dictation
-        request.addsPunctuation = true
-        request.requiresOnDeviceRecognition = useOnDevice
-        setRequest(request)
-        segmentStarted = Date()
-        segmentID += 1
-        let id = segmentID
-
-        task = recognizer.recognitionTask(with: request) { [weak self] result, error in
-            DispatchQueue.main.async { self?.handle(id: id, result: result, error: error) }
-        }
-    }
-
-    private func handle(id: Int, result: SFSpeechRecognitionResult?, error: Error?) {
-        // A late callback from a cancelled or superseded task must not
-        // publish an empty segment over the running transcript.
-        guard wantsListening, id == segmentID else { return }
-
-        if let result {
-            let next = result.bestTranscription.formattedString
-            if result.isFinal {
-                committed = joined(committed, next)
-                partial = ""
-                fastFailures = 0
-                publish()
-                // The task already finished — do not cancel it, or the error
-                // callback would look like a new empty utterance.
-                task = nil
-                setRequest(nil)
-                scheduleSegment()
-                return
+        flushBusy = true
+        let isFinal = final
+        let id = sessionID
+        work.async { [weak self] in
+            guard let self else { return }
+            let outcome = self.captureAndTranscribe(force: isFinal)
+            DispatchQueue.main.async {
+                guard self.sessionID == id, !self.cancelled else {
+                    self.flushBusy = false
+                    let done = self.flushCompletions
+                    self.flushCompletions = []
+                    done.forEach { $0() }
+                    return
+                }
+                switch outcome {
+                case .skipped:
+                    break
+                case .text(let text):
+                    self.transcribeFailures = 0
+                    if !text.isEmpty {
+                        self.lastPublished = text
+                        self.onText?(text, isFinal)
+                    }
+                case .failed(let message):
+                    self.transcribeFailures += 1
+                    VoiceLog.line("flush error (\(self.transcribeFailures)): \(message)")
+                    if self.transcribeFailures >= 2 {
+                        self.fail(message)
+                        let done = self.flushCompletions
+                        self.flushCompletions = []
+                        done.forEach { $0() }
+                        return
+                    }
+                }
+                self.flushBusy = false
+                if self.flushAgain {
+                    let againFinal = self.flushAgainFinal
+                    self.flushAgain = false
+                    self.flushAgainFinal = false
+                    self.enqueueFlush(final: againFinal)
+                } else {
+                    let done = self.flushCompletions
+                    self.flushCompletions = []
+                    done.forEach { $0() }
+                }
             }
-            // After a pause the same task often starts a *new* sentence and
-            // drops the earlier words without sending `isFinal`. Fold the
-            // previous partial into `committed` so the page is not overwritten.
-            if Self.looksLikeNewUtterance(previous: partial, next: next) {
-                committed = joined(committed, partial)
+        }
+    }
+
+    private enum FlushOutcome {
+        case skipped
+        case text(String)
+        case failed(String)
+    }
+
+    private func captureAndTranscribe(force: Bool) -> FlushOutcome {
+        guard WhisperEngine.shared.isReady else {
+            VoiceLog.line("flush skip: whisper not ready, still buffering")
+            return .skipped
+        }
+
+        sampleLock.lock()
+        let copy = samples
+        sampleLock.unlock()
+
+        let minSamples = Int(0.45 * 16_000)
+        if copy.isEmpty {
+            return committed.isEmpty ? .skipped : .text(committed)
+        }
+        if !Self.hasSpeech(copy) {
+            // Only throw away a *quiet* buffer. A rising take (rms ~0.02) was
+            // being deleted before it crossed the old gate, so nothing ever
+            // reached Whisper.
+            let energy = Self.rms(copy)
+            if energy < 0.008, copy.count >= Int(1.5 * 16_000) {
+                sampleLock.lock()
+                samples.removeAll(keepingCapacity: true)
+                sampleLock.unlock()
+                lastFlushCount = 0
             }
-            partial = next
-            publish()
-            return
+            VoiceLog.line("flush skip: no speech (rms=\(String(format: "%.4f", energy)))")
+            return committed.isEmpty ? .skipped : .text(committed)
         }
-        guard error != nil else { return }
-        committed = joined(committed, partial)
-        partial = ""
-        publish()
-        // A pause normally surfaces here, and a pause must never end the
-        // session: the segment is recycled for as long as the user keeps the
-        // mic on. Only an on-device model that dies instantly over and over is
-        // worth reacting to — the server recogniser still works there.
-        if Date().timeIntervalSince(segmentStarted) < 0.4 {
-            fastFailures += 1
-            if fastFailures >= 2, useOnDevice {
-                useOnDevice = false
+        if copy.count < minSamples, !force {
+            VoiceLog.line("flush skip: \(copy.count) samples")
+            return committed.isEmpty ? .skipped : .text(committed)
+        }
+        if !force, copy.count == lastFlushCount { return .skipped }
+        lastFlushCount = copy.count
+
+        let wav = WaveFile.encode(copy)
+        let last = ServerRecord.directory.appendingPathComponent("whisper-last.wav")
+        try? wav.write(to: last)
+        VoiceLog.line("flush tail \(copy.count) samples, committed=\(committed.count) chars")
+
+        let sem = DispatchSemaphore(value: 0)
+        var live = ""
+        var errorMessage: String?
+        WhisperEngine.shared.transcribe(wav: wav) { result in
+            switch result {
+            case .success(let raw):
+                live = WhisperEngine.clean(raw)
+                VoiceLog.line("whisper tail: \(live.isEmpty ? "(empty)" : live)")
+            case .failure(let error):
+                errorMessage = error.localizedDescription
             }
-        } else {
-            fastFailures = 0
+            sem.signal()
         }
-        scheduleSegment(cancelCurrent: true)
-    }
-
-    /// Replace the finished task after a beat, so a silent segment cannot spin.
-    private func scheduleSegment(cancelCurrent: Bool = false) {
-        guard wantsListening else { return }
-        if cancelCurrent {
-            segmentID += 1
-            task?.cancel()
-            task = nil
-            setRequest(nil)
+        if sem.wait(timeout: .now() + 50) == .timedOut {
+            return .failed("语音识别超时")
+        }
+        if let errorMessage { return .failed(errorMessage) }
+        if live.isEmpty {
+            return committed.isEmpty ? .skipped : .text(committed)
         }
 
-        restart?.cancel()
-        let elapsed = Date().timeIntervalSince(segmentStarted)
-        let expected = segmentID
-        let work = DispatchWorkItem { [weak self] in
-            guard let self, self.wantsListening, self.segmentID == expected else { return }
-            self.beginSegment()
+        let full = Self.joined(committed, live)
+        let shouldCommit = force
+            || (copy.count >= Int(2.4 * 16_000) && Self.tailIsQuiet(copy))
+        if shouldCommit, !live.isEmpty {
+            committed = full
+            sampleLock.lock()
+            samples.removeAll(keepingCapacity: true)
+            sampleLock.unlock()
+            lastFlushCount = 0
+            VoiceLog.line("committed \(committed)")
         }
-        restart = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + (elapsed < 0.4 ? 0.5 : 0.12), execute: work)
+        return .text(full.isEmpty ? lastPublished : full)
     }
 
-    private func fail(_ message: String) {
-        stop()
-        state = .failed(message)
-    }
-
-    // MARK: - text
-
-    /// Everything this session has heard: closed segments plus the live one.
-    private var transcript: String {
-        joined(committed, partial)
-    }
-
-    /// Republish the running transcript. Never final: the page must keep
-    /// treating it as replaceable until the user stops recording.
-    private func publish() {
-        guard !transcript.isEmpty else { return }
-        onText?(transcript, false)
-    }
-
-    /// True when `next` is a fresh sentence, not a revision of `previous`.
-    private static func looksLikeNewUtterance(previous: String, next: String) -> Bool {
-        let prev = previous.trimmingCharacters(in: .whitespacesAndNewlines)
-        let incoming = next.trimmingCharacters(in: .whitespacesAndNewlines)
-        if prev.isEmpty || incoming.isEmpty { return false }
-        let prevFold = prev.lowercased()
-        let nextFold = incoming.lowercased()
-        if nextFold.hasPrefix(prevFold) || prevFold.hasPrefix(nextFold) { return false }
-        if nextFold.contains(prevFold) { return false }
-        return true
-    }
-
-    private func joined(_ head: String, _ tail: String) -> String {
+    private static func joined(_ head: String, _ tail: String) -> String {
         let left = head.trimmingCharacters(in: .whitespacesAndNewlines)
         let right = tail.trimmingCharacters(in: .whitespacesAndNewlines)
         if left.isEmpty { return right }
         if right.isEmpty { return left }
+        if left.last.map(isCJK) == true || right.first.map(isCJK) == true {
+            return left + right
+        }
+        if left.last?.isWhitespace == true || right.first?.isWhitespace == true {
+            return left + right
+        }
         return left + " " + right
     }
 
-    private func setRequest(_ next: SFSpeechAudioBufferRecognitionRequest?) {
-        lock.lock()
-        request = next
-        lock.unlock()
+    private static func isCJK(_ character: Character) -> Bool {
+        character.unicodeScalars.contains { scalar in
+            (0x4E00 ... 0x9FFF).contains(scalar.value)
+                || (0x3400 ... 0x4DBF).contains(scalar.value)
+                || (0x3040 ... 0x30FF).contains(scalar.value)
+        }
+    }
+
+    private static func tailIsQuiet(_ samples: [Int16], seconds: Double = 0.5) -> Bool {
+        let count = min(samples.count, Int(seconds * 16_000))
+        guard count > 0 else { return false }
+        return rms(samples.suffix(count)) < 0.022
+    }
+
+    /// Room noise on this machine sits around 0.003–0.008 RMS; a normal
+    /// utterance lands around 0.02. Gate on a short window so a word in the
+    /// middle of a longer buffer still counts.
+    private static func hasSpeech(_ samples: [Int16]) -> Bool {
+        let window = Int(0.2 * 16_000)
+        guard !samples.isEmpty else { return false }
+        if samples.count < window {
+            return rms(samples) > 0.012
+        }
+        var index = 0
+        while index + window <= samples.count {
+            if rms(samples[index ..< (index + window)]) > 0.014 { return true }
+            index += window / 2
+        }
+        return rms(samples.suffix(window)) > 0.014
+    }
+
+    private static func rms<S: Sequence>(_ samples: S) -> Double where S.Element == Int16 {
+        var sum: Double = 0
+        var count = 0
+        for sample in samples {
+            let value = Double(sample)
+            sum += value * value
+            count += 1
+        }
+        guard count > 0 else { return 0 }
+        return sqrt(sum / Double(count)) / 32768.0
+    }
+
+    private func fail(_ message: String) {
+        cancelled = true
+        sessionID += 1
+        wantsListening = false
+        stopFlushes()
+        discardEngine()
+        state = .failed(message)
     }
 
     // MARK: - level meter
 
     private var lastLevelSent = Date.distantPast
 
-    /// Forward a level to the UI at ~30 Hz. Runs on the audio thread, so it only
-    /// compares a timestamp and hops to the main queue.
+    /// Forward a level to the UI at ~30 Hz. Runs on the audio thread.
     private func report(level: Float) {
         let now = Date()
         guard now.timeIntervalSince(lastLevelSent) >= 1.0 / 30 else { return }

@@ -1089,10 +1089,12 @@ final class HarnessWindowController: NSWindowController, WKNavigationDelegate, W
         switch state {
         case .idle:
             evaluate("window.__dshVoiceState && window.__dshVoiceState('idle')")
-        case .starting:
-            evaluate("window.__dshVoiceState && window.__dshVoiceState('starting')")
+        case .starting(let message):
+            evaluate("window.__dshVoiceState && window.__dshVoiceState('starting', \(Self.jsString(message)))")
         case .listening:
             evaluate("window.__dshVoiceState && window.__dshVoiceState('listening')")
+        case .cancelled:
+            evaluate("window.__dshVoiceState && window.__dshVoiceState('cancelled')")
         case .failed(let message):
             evaluate("window.__dshVoiceState && window.__dshVoiceState('failed', \(Self.jsString(message)))")
         }
@@ -1193,6 +1195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.global(qos: .utility).async { KeepAliveAgent.install() }
         bootServer()
         FolderAccess.requestKnownFolders()
+        WhisperEngine.shared.prepare(progress: { _ in }, completion: { _ in })
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -1228,6 +1231,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationWillTerminate(_ notification: Notification) {
+        WhisperEngine.shared.shutdown()
         server.handoff()
     }
 
@@ -1262,10 +1266,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// a session can be written by only one server at a time, so a second one
     /// would fight this window for every session lock.
     @objc func openInBrowser(_ sender: Any?) {
-        guard case .ready(let url, _) = server.state else {
-            NSSound.beep()
-            return
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            let published = WebURL.read()
+            let fromState: URL? = {
+                if case .ready(let url, _) = self.server.state { return url }
+                return nil
+            }()
+            let url: URL?
+            if let published, WebURL.probe(published) {
+                url = published
+            } else if let fromState, WebURL.probe(fromState) {
+                url = fromState
+            } else {
+                url = nil
+            }
+            DispatchQueue.main.async {
+                guard let url else {
+                    NSSound.beep()
+                    return
+                }
+                NSWorkspace.shared.open(url)
+            }
         }
+    }
+
+    @objc func openGitHubRepo(_ sender: Any?) {
+        guard let url = URL(string: "https://github.com/alex-zz7/deepseek-harness") else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    @objc func openRetrieveDocs(_ sender: Any?) {
+        guard let url = URL(string: "https://github.com/alex-zz7/deepseek-harness/blob/main/docs/knowledge-retrieve.md") else { return }
         NSWorkspace.shared.open(url)
     }
 
@@ -1281,8 +1313,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Self.voiceInput.toggle()
     }
 
-    /// Stop dictation and keep the text. The page has already released its span,
-    /// so nothing is republished.
+    /// Stop dictation and keep the text. A last Whisper pass runs first so the
+    /// trailing words are not dropped; the page then closes the span.
     @objc func finishVoice() {
         Self.voiceInput.finish()
     }
@@ -1500,6 +1532,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let full = NSMenuItem(title: "进入全屏幕", action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
         full.keyEquivalentModifierMask = [.command, .control]
         viewMenu.addItem(full)
+
+        // Help
+        let helpItem = NSMenuItem()
+        main.addItem(helpItem)
+        let helpMenu = NSMenu(title: "帮助")
+        helpItem.submenu = helpMenu
+        helpMenu.addItem(withTitle: "GitHub 仓库", action: #selector(openGitHubRepo), keyEquivalent: "").target = self
+        helpMenu.addItem(withTitle: "检索对比说明", action: #selector(openRetrieveDocs), keyEquivalent: "").target = self
+        NSApp.helpMenu = helpMenu
 
         // Window
         let windowItem = NSMenuItem()

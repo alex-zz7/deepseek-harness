@@ -4,6 +4,10 @@ build/
 *.app
 mac/build/
 
+# Windows
+win/bin/
+win/obj/
+
 # 密钥与环境
 .env
 .env.*
@@ -25,6 +29,7 @@ __pycache__/
 
 # 本机编辑器
 .obsidian/
+.playwright-cli/
 
 # 知识库 skill 正文副本（体积大，且可能含未打码凭据）
 knowledge/skills/vault/

@@ -1,0 +1,17 @@
+# The session importer's own profile layer.
+#
+# Declared through `dsh.bundle.patch`, which makes this package a profile layer
+# rather than a plain dependency: installing the package is the whole install,
+# and the loader picks this row up on the next boot.
+#
+#   dsh plugin --profile web add /path/to/plugins/session-import
+#
+# The user's own `~/.dsh/profiles/<profile>/cordis.patch.yml` is never touched.
+# Removing the dependency removes the importer.
+#
+# Do NOT also pass this row through `dsh web --patch`: a second registration of
+# the same row id is a composition error, not a harmless duplicate.
+
+- insert:
+    - id: session-import
+      name: '@alex/dsh-session-import'

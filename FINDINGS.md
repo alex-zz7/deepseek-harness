@@ -188,3 +188,93 @@ instead of `WEB_BLOCKED_URL`. We cannot do that here without editing
 
 Repro: `node plugins/web-fetch-proxy/test/probe-fetch.mjs`.
 Docs: `docs/web-fetch-fakeip-fix.md`.
+
+---
+
+# Spike findings — importing Cursor / Claude Code / Codex sessions
+
+**Verdict: an external conversation can be written as a first-class DSH session
+without touching the harness.** The artifact format is a plain container, the
+codec is importable, and the sidebar groups by a `cwd` the session header
+already carries.
+
+Run on 2026-09-13, macOS 26.5.1, DSH `0.1.5-rc.1`, plugin API `0.1.5-rc.2`.
+
+## The four facts
+
+| # | Fact | Evidence |
+|---|---|---|
+| 1 | A session is one file: a header line plus a contiguous event log, split into independently decodable checksummed Zstd frames | `dsh-session-persistence-jsonl` `encodeMaterialization`: `header + "\n"` framed, then `events + "\n"` framed, both with `ZSTD_c_checksumFlag: 1` |
+| 2 | The current format codec is importable at run time from the installed tree | `import('…/@deepseek-ai/dsh-session-format-catalog/lib/index.js')` → `sessionFormatCatalog.encodeCurrentHeader/encodeCurrentEvent`; `dsh-session` exports `adoptSessionEvent` |
+| 3 | Reading is validated the same way persistence validates it | `catalog.createRestore(header, { recovery: 'strict', validation: 'transformed' })` → `decodeRow` per row → `finish()` |
+| 4 | The sidebar groups imported sessions by the header's `cwd`, and the session controller registers workspaces itself | `api-session-controller` line 2708 injects `workspaceRegistry`; `updatedAt = max(header.createdAt, projections.lastPromptAt)` where `lastPromptAt` folds from `user/message` events whose `source.kind === 'user'` |
+
+## Header and event facts worth keeping
+
+- Header required keys are exactly `version, id, createdAt, isSeeded,
+  delegationDepth`, plus optional `cwd, parentSession, origin, agentPreset`.
+  There is no `type` in the logical header — the `"type":"session"` line is
+  added by the physical encoder. Passing `type` to `encodeCurrentHeader` throws
+  `format v2 header has unexpected field type`.
+- Event top-level keys are `type, seq, time, data`; surface events
+  (`user/message`, `assistant/message`, `tool/result`) may add `surfaceOp`.
+- `assistant/message` is accepted without `stream` and `usage`; the harness
+  itself writes `stream`, but restore does not require it.
+- Session format is v3 and the artifact is `session.v3.jsonl.zstd` under
+  `sessions/<projectKey>/<encodeSegment(id)>/`, where `projectKey` is
+  `--` + separators-as-`-` + `~XXXX` escapes + `--` (251-char cap).
+
+## Per-source facts
+
+| Source | Store | Gotcha |
+|---|---|---|
+| Cursor | `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb` (6.1 GB here) | Bubble order must come from SQLite `rowid`. `createdAt` is an empty string on hundreds of bubbles in one long chat, so sorting by it scrambles the transcript. `LIKE 'bubbleId:<id>:%'` makes SQLite scan the whole table (~6.7 s per chat); a `key >= prefix AND key < prefix;` range uses the unique index (~32 ms). |
+| Claude Code | `~/.claude/projects/<lossy-project>/*.jsonl` | Line 1 is often a `queue-operation`, so the workspace must come from the first record *carrying* `cwd`, not the first record. `custom-title` records carry a real title. |
+| Codex | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` | `developer` and `system` messages are the harness prompt; user-role records can be injected catalogs (`<recommended_plugins>`, `<environment_context>`). |
+
+## Everything is verified by the harness, not by the writer
+
+`verifyArtifact` runs three boundaries before an import reports success: the
+frame scan + catalog restore, `adoptSessionEvent` per event, and `Session.create`
+over the whole log.
+
+## The bug this caught, and why two passes were not enough
+
+The first version verified passes 1 and 2 and shipped sessions that listed in the
+sidebar and then refused to open with:
+
+```
+stored session "<id>" is corrupt: seed assistant/message at index 3 has invalid
+settlement fields   (gateway/internal)
+```
+
+`assertAssistantSettlementShape` (`dsh-session`, the seed loader) requires
+`data.stream` to be **present and an array** on every `assistant/message`, and
+the codec, the restore stage, and `adoptSessionEvent` all accept a message
+without it. So "the file parses" and "the app can open it" are different claims,
+and only pass 3 tests the second one. Repro:
+
+```
+curl -b <cookie> -X POST localhost:PORT/api/session/page -H 'content-type: application/json' \
+  -d '{"type":"client-request","rpcId":"r1","method":"session/page","payload":{"args":{"request":{"address":{"kind":"session","sessionId":"<id>"},"throughSeq":22}}}}'
+```
+
+The stream is written as `[]`: Cursor, Claude, and Codex keep the finished
+message, not the per-delta timings, so a populated stream would be fabricated.
+`repair` rebuilds previously imported sessions from their sources while keeping
+their ids, which is how the four sessions already written here were fixed.
+
+Repro: `node plugins/session-import/scripts/import-sessions.mjs list|preview|import`.
+Plugin: `plugins/session-import/README.md`.
+
+Sidebar listing only reads the projection cache. A file written outside the
+harness has no `session_projcache` row, so `displayTitle` falls back to the
+workspace folder name. Import now snapshots the artifact into that cache, waits
+for the title, `attachSession`s it, and emits `api-session/added`. Empty skips
+(no `sessionId`) do not create folders.
+
+Titles: Cursor `name` and Claude `ai-title` win; a `custom-title` / `name` that
+equals the folder is dropped. Codex has no title field and its first user-role
+item is usually an `AGENTS.md` dump or a multi-hundred-kilobyte
+`<recommended_plugins>` catalog — skip those lines and use the first real
+prompt. Empty realtime / scaffolding-only files are not listed.
