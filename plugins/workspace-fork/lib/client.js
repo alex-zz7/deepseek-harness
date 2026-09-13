@@ -2532,14 +2532,16 @@ window.__ModuleLoader__.load({
 			const previousOrderBy = (0, react.useRef)(orderBy);
 			useNativeDragAcceptance(drag !== null || workspaceDrag !== null);
 			const currentGroup = current === void 0 || !workspaceReady ? void 0 : owningGroupKey(workspaces, current);
+			// Expand the folder when the open session changes. Do not depend on
+			// `groupExpansion`: that re-opened the folder the moment the user
+			// collapsed it.
 			(0, react.useEffect)(() => {
 				if (current === void 0 || currentGroup === void 0 || groupExpansion[currentGroup] === true) return;
 				setGroupExpanded(currentGroup, true);
 			}, [
 				current,
 				currentGroup,
-				setGroupExpanded,
-				groupExpansion
+				setGroupExpanded
 			]);
 			const expandedGroups = (0, react.useMemo)(() => Object.entries(groupExpansion).filter(([, expanded]) => expanded).map(([key]) => key), [groupExpansion]);
 			const ungroupedSessionIds = (0, react.useMemo)(() => {
@@ -2609,7 +2611,6 @@ window.__ModuleLoader__.load({
 				if (revealGroup === void 0 || groupExpansion[revealGroup] === true) return;
 				setGroupExpanded(revealGroup, true);
 			}, [
-				groupExpansion,
 				revealGroup,
 				setGroupExpanded
 			]);
