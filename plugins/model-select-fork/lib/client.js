@@ -111,6 +111,7 @@ window.__ModuleLoader__.load({
 			generation = 0;
 			disposed = false;
 			resolved = false;
+			healed = false;
 			unsubscribeCatalog;
 			unsubscribeSelection;
 			/**
@@ -178,6 +179,7 @@ window.__ModuleLoader__.load({
 					s.status = "ready";
 					s.error = null;
 				});
+				rememberSelection(selection);
 				this.syncInputs();
 			}
 			/**
@@ -233,6 +235,26 @@ window.__ModuleLoader__.load({
 					status: this.store.getSnapshot().status === "selecting" ? "selecting" : "ready",
 					error: null
 				});
+				this.maybeRestoreEffort(current, catalog.value.groups);
+			}
+			/**
+			* Re-apply the last chosen effort when a Session has none yet, so a new
+			* chat does not open on the provider default and ask again.
+			*/
+			maybeRestoreEffort(current, groups) {
+				const group = groups.find((entry) => entry.id === current.provider);
+				const model = group?.models.find((entry) => entry.id === current.model);
+				if (model !== void 0 && current.reasoningEffort !== void 0) rememberSelection(current);
+				if (this.healed || this.disposed) return;
+				this.healed = true;
+				if (current.reasoningEffort !== void 0 || model === void 0) return;
+				const wanted = effortForModel(current.provider, model, current);
+				if (wanted === void 0) return;
+				this.select({
+					provider: current.provider,
+					model: current.model,
+					reasoningEffort: wanted
+				}).catch(() => {});
 			}
 		};
 		function modelSelectionProjection(value) {
@@ -247,6 +269,71 @@ window.__ModuleLoader__.load({
 				...catalog,
 				groups: catalog.groups.filter((group) => group.id !== "vision-mix"),
 				failures: catalog.failures.filter((failure) => failure.id !== "vision-mix")
+			};
+		}
+		/**
+		 * Last-used effort survives new Sessions. The Host already writes the
+		 * complete selection through `agentDefaultModel.saveSelection`, but picking
+		 * a model used to send no effort (these routes advertise none as default),
+		 * which wiped the saved level and forced another pick on the next chat.
+		 * localStorage is best-effort: `dsh web` changes port, so the in-memory
+		 * copy covers the current page and the Host settings cover the next one.
+		 */
+		const LAST_EFFORT_STORE = "dsh.model.effort.v1";
+		let lastEffortMemory = {
+			last: void 0,
+			byModel: {}
+		};
+		function readLastEffort() {
+			try {
+				if (typeof localStorage === "undefined") return lastEffortMemory;
+				const raw = localStorage.getItem(LAST_EFFORT_STORE);
+				if (raw === null) return lastEffortMemory;
+				const parsed = JSON.parse(raw);
+				if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return lastEffortMemory;
+				const byModel = parsed.byModel !== null && typeof parsed.byModel === "object" && !Array.isArray(parsed.byModel) ? parsed.byModel : {};
+				lastEffortMemory = {
+					last: typeof parsed.last === "string" || parsed.last === null ? parsed.last : lastEffortMemory.last,
+					byModel: {
+						...lastEffortMemory.byModel,
+						...byModel
+					}
+				};
+				return lastEffortMemory;
+			} catch {
+				return lastEffortMemory;
+			}
+		}
+		function rememberSelection(selection) {
+			const stored = readLastEffort();
+			const next = {
+				last: selection.reasoningEffort ?? null,
+				byModel: {
+					...stored.byModel,
+					[`${selection.provider}/${selection.model}`]: selection.reasoningEffort ?? null
+				}
+			};
+			lastEffortMemory = next;
+			try {
+				if (typeof localStorage !== "undefined") localStorage.setItem(LAST_EFFORT_STORE, JSON.stringify(next));
+			} catch {}
+		}
+		function advertisedEffort(model, effort) {
+			if (typeof effort !== "string" || effort.length === 0) return;
+			return model.reasoning?.efforts.some((level) => level.id === effort) === true ? effort : void 0;
+		}
+		function effortForModel(provider, model, current) {
+			const stored = readLastEffort();
+			const saved = stored.byModel[`${provider}/${model.id}`];
+			if (saved === null) return;
+			return advertisedEffort(model, saved) ?? advertisedEffort(model, current?.reasoningEffort) ?? advertisedEffort(model, stored.last) ?? advertisedEffort(model, model.reasoning?.defaultEffort);
+		}
+		function selectionForModel(provider, model, current) {
+			const reasoningEffort = effortForModel(provider, model, current);
+			return {
+				provider,
+				model: model.id,
+				...reasoningEffort === void 0 ? {} : { reasoningEffort }
 			};
 		}
 		//#endregion
@@ -435,12 +522,8 @@ window.__ModuleLoader__.load({
 			const choices = (0, react.useMemo)(() => state.groups.flatMap((group) => group.models.map((model) => ({
 				group,
 				model,
-				selection: {
-					provider: group.id,
-					model: model.id,
-					...model.reasoning?.defaultEffort === void 0 ? {} : { reasoningEffort: model.reasoning.defaultEffort }
-				}
-			}))), [state.groups]);
+				selection: selectionForModel(group.id, model, state.current)
+			}))), [state.groups, state.current]);
 			const currentChoice = choices[state.current === null ? -1 : choices.findIndex((c) => c.selection.provider === state.current?.provider && c.selection.model === state.current.model)];
 			const reasoning = currentChoice?.model.reasoning;
 			const effectiveEffort = state.current?.reasoningEffort ?? reasoning?.defaultEffort;
@@ -970,12 +1053,7 @@ window.__ModuleLoader__.load({
 		function selectionOf(state, id) {
 			for (const group of state.groups) for (const model of group.models) {
 				if (rowId(group.id, model.id) !== id) continue;
-				const reasoningEffort = state.current?.provider === group.id && state.current.model === model.id ? state.current?.reasoningEffort ?? model.reasoning?.defaultEffort : model.reasoning?.defaultEffort;
-				return {
-					provider: group.id,
-					model: model.id,
-					...reasoningEffort === void 0 ? {} : { reasoningEffort }
-				};
+				return selectionForModel(group.id, model, state.current);
 			}
 		}
 		/** Dictionary namespace owned by this plugin. */
